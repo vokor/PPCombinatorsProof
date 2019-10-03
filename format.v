@@ -35,11 +35,29 @@ Definition sp :=
     end.
 
 (*The return value of this function should be option nat, but I can't use this type in other functions, because they have return value: nat*)
-Definition list_max (in_list:list nat): nat :=
-    match in_list with
-    | nil       => 0 (* Not used "Empty list as argument of list_max." *)
-    | hd :: tl  => fold_left max tl hd
-    end.
+Definition list_max_long (in_list : {in_list : list nat | in_list <> nil}) : nat :=
+  match in_list with
+  | exist _ x PX =>
+    match x with
+    | nil => 0 
+    | hd :: tl => 1 + fold_left max tl hd
+    end
+  end. 
+
+Lemma list_max_long_not_0 : forall x, list_max_long x <> 0.
+Proof.
+  intros [x HH]. unfold list_max_long.
+  destruct x.
+  { (* intros AA. red in HH. apply HH. reflexivity. *)
+    auto. }
+  simpl. intros AA. inversion AA.
+Qed.
+
+Program Definition list_max (in_list : {in_list : list nat | nil <> in_list}) : nat :=
+  match in_list with
+  | nil => _
+  | hd :: tl => fold_left max tl hd
+  end.
 
 (* Analog of list_max. Maybe it will be better? *)
 Fixpoint maximum (l:list nat) : nat :=
@@ -48,7 +66,7 @@ Fixpoint maximum (l:list nat) : nat :=
     | (x::xs) => max x (maximum xs)
     end.
 
-Definition add_above (f1:t) (f2:t):t :=
+Definition add_above (f1:t) (f2:t): t :=
   match f1, f2 with
   | T h1 fw1 m1 lw1 t1, T h2 fw2 m2 lw2 t2 => 
       match h1, h2 with
@@ -59,18 +77,22 @@ Definition add_above (f1:t) (f2:t):t :=
            match h1, h2 with
            | 1,1 => fw1
            | 1,2 => fw2
-           | 1,_ => (*I can't found analog of 'x when x > 2' (line 59 in format.ml). But according to pattern matching 'x' is always > 2*)
+           | 1,_ =>
+            (* I can't found analog of 'x when x > 2' (line 59 in format.ml).
+               But according to pattern matching 'x' is always > 2. *)
              max fw2 m2
            | 2,1 => lw1
            | _,1 => max m1 lw1
-           | _,_ => list_max (m1::lw1::fw2::m2::nil)
+           | _,_ => list_max (exist _ (m1::lw1::fw2::m2::nil)
+                                    (@nil_cons _ _ _))
            end
         in T
            (h1 + h2)
            fw1
            middle_with_new
            lw2
-           (fun s t => t1 s (append "\n" (append (sp s) (t2 s t)))) (*The question is how to use operator ++ instead of append?*)
+           (fun s t => t1 s (append "\n" (append (sp s) (t2 s t))))
+           (*The question is how to use operator ++ instead of append?*)
         end
   end.
 
