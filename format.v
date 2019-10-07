@@ -33,19 +33,14 @@ Fixpoint sp n :=
     | S n' => append " " (sp n')
     end.
 
-Fixpoint maximum (l:list nat) : nat :=
-    match l with
-    | nil => O
-    | (x::xs) => max x (maximum xs)
-    end.
-(*dependent pattern...*)
-Definition list_max (in_list:{x:list nat | x <> nil}): nat :=
-    match in_list with
-    | exist _ m _ =>
-      match m .... with
-      | nil => _
-    end.
-Next Obligation.
+Definition list_max (in_list : {in_list : list nat | nil <> in_list}) : nat :=
+  match in_list with
+  | exist _ x _ =>
+    match x with
+    | nil => 0 
+    | hd :: tl => fold_left max tl hd
+    end
+  end.
 
 Definition add_above (G:t) (G':t): t:=
   match G.(height), G'.(height) with
@@ -59,7 +54,8 @@ Definition add_above (G:t) (G':t): t:=
          | 1,_ => max G'.(first_line_width) G'.(middle_width)
          | 2,1 => G.(last_line_width)
          | _,1 => max G.(middle_width) G.(last_line_width)
-         | _,_ => list_max (G.(middle_width)::G.(last_line_width)::G'.(first_line_width)::G'.(middle_width)::nil)
+         | _,_ => list_max (exist _ (G.(middle_width)::G.(last_line_width)::G'.(first_line_width)::G'.(middle_width)::nil)
+                                 (@nil_cons _ _ _))
          end
       in 
          T
@@ -80,9 +76,10 @@ Definition add_beside (G:t) (G':t):t :=
          | 1,(1|2) =>  G.(first_line_width) + G'.(first_line_width)
          | 1,_ => G.(first_line_width) + G'.(middle_width)
          | 2,1 => G.(first_line_width)
-         | _,_ => match (3 <=? G.(height)) && (G'.(height) =? 1)) with
-            | true  =>  G.(middle_width)
-            | false => list_max (G.(middle_width)::(G.(last_line_width) + G'.(first_line_width))::(G.(last_line_width) + G'.(middle_width))::nil)
+         | _,_ => match (andb (3 <=? G.(height)) (G'.(height) =? 1)) with
+            | true  => G.(middle_width)
+            | false => list_max (exist _ (G.(middle_width)::(G.(last_line_width) + G'.(first_line_width))::(G.(last_line_width) + G'.(middle_width))::nil)
+                                 (@nil_cons _ _ _))
             end
          end
       in
@@ -104,14 +101,16 @@ Definition add_fill (G:t) (G':t) (shift:nat) :t :=
     | _, _ => 
       let middle_width_new :=
          match G.(height), G'.(height) with
-         | 1,(1|2) => (G.(first_line_width) + G'.(first_line_width))
-         | 1,_ => (shift + G'.(middle_width))
+         | 1,(1|2) => G.(first_line_width) + G'.(first_line_width)
+         | 1,_ => shift + G'.(middle_width)
          | 2,1 => G.(first_line_width)
-         | 2,2 => list_max (G.(middle_width)::(G.(last_line_width) + G'.(first_line_width))::(shift + G'.(middle_width))::nil
-         | 2,_ => max (G.(last_line_width) + G'.(first_line_width)) (shift + G'.(middle_width)))
+         | 2,2 => list_max (exist _ (G.(middle_width)::(G.(last_line_width) + G'.(first_line_width))::(shift + G'.(middle_width))::nil)
+                                 (@nil_cons _ _ _))
+         | 2,_ => max (G.(last_line_width) + G'.(first_line_width)) (shift + G'.(middle_width))
          | _,1 => G.(middle_width)
          | _,2 => max G.(middle_width) (G.(last_line_width) + G'.(first_line_width))
-         | _,_ => list_max (G.(middle_width)::(G.(last_line_width) + G'.(first_line_width))::(shift + G'.(middle_width))::nil)
+         | _,_ => list_max (exist _ (G.(middle_width)::(G.(last_line_width) + G'.(first_line_width))::(shift + G'.(middle_width))::nil)
+                                 (@nil_cons _ _ _))
          end
       in
         let first_line_width_new :=
@@ -136,7 +135,7 @@ Definition to_string (f:t) :=
 
 Definition total_width (f:t) := 
   match f with
-  | T _ fw m lw _ => list_max (fw::m::lw::nil)
+  | T _ fw m lw _ => list_max (exist _ (fw::m::lw::nil) (@nil_cons _ _ _))
   end.
 
 Definition split regexp :=
@@ -176,7 +175,6 @@ Definition ident shift f :=
     (fun s t => append (sp shift) (to_text (shift + s) t))
   end.
 
-(* What's level is correct? *)
 Notation "a >|< b" := (add_beside a b) (at level 70).
 Notation "a >-< b" := (add_above a b) (at level 70).
 Notation "a >/< b" := (add_fill a b) (at level 70).
