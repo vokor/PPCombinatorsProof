@@ -25,7 +25,13 @@ Definition compare (G:t) (G':t): comparison :=
 
 Definition empty: t := T 0 0 0 0 (fun s t => t).
 
-Definition line (nt:string): t := T 1 (String.length nt) (String.length nt) (String.length nt) (fun s t => append nt t).
+Definition line (nt:string): t := 
+    T 
+      1
+      (String.length nt)
+      (String.length nt)
+      (String.length nt)
+      (fun s t => append nt t).
 
 Fixpoint sp n :=
     match n with
@@ -54,8 +60,13 @@ Definition add_above (G:t) (G':t): t:=
          | 1,_ => max G'.(first_line_width) G'.(middle_width)
          | 2,1 => G.(last_line_width)
          | _,1 => max G.(middle_width) G.(last_line_width)
-         | _,_ => list_max (exist _ (G.(middle_width)::G.(last_line_width)::G'.(first_line_width)::G'.(middle_width)::nil)
-                                 (@nil_cons _ _ _))
+         | _,_ => list_max (exist _ 
+                    (G.(middle_width)::
+                     G.(last_line_width)::
+                     G'.(first_line_width)::
+                     G'.(middle_width)::
+                     nil)
+                        (@nil_cons _ _ _))
          end
       in 
          T
@@ -78,20 +89,27 @@ Definition add_beside (G:t) (G':t):t :=
          | 2,1 => G.(first_line_width)
          | _,_ => match (andb (3 <=? G.(height)) (G'.(height) =? 1)) with
             | true  => G.(middle_width)
-            | false => list_max (exist _ (G.(middle_width)::(G.(last_line_width) + G'.(first_line_width))::(G.(last_line_width) + G'.(middle_width))::nil)
-                                 (@nil_cons _ _ _))
+            | false => list_max (exist _ 
+                          (G.(middle_width)::
+                          (G.(last_line_width) + G'.(first_line_width))::
+                          (G.(last_line_width) + G'.(middle_width))
+                          ::nil)
+                               (@nil_cons _ _ _))
             end
          end
       in
         let first_line_width_new :=
-           if (G.(height) =? 1) then G.(first_line_width) + G'.(first_line_width) else G.(first_line_width)
+           if (G.(height) =? 1) then 
+              G.(first_line_width) + G'.(first_line_width) 
+           else
+              G.(first_line_width)
         in
            T
-           (G.(height) + G'.(height) - 1)
-           first_line_width_new
-           middle_width_new 
-           (G.(last_line_width) + G'.(last_line_width))
-           (fun s t => G.(to_text) s (G'.(to_text) (s + G.(last_line_width)) t))
+            (G.(height) + G'.(height) - 1)
+            first_line_width_new
+            middle_width_new 
+            (G.(last_line_width) + G'.(last_line_width))
+            (fun s t => G.(to_text) s (G'.(to_text) (s + G.(last_line_width)) t))
   end.
 
 Definition add_fill (G:t) (G':t) (shift:nat) :t :=
@@ -104,27 +122,41 @@ Definition add_fill (G:t) (G':t) (shift:nat) :t :=
          | 1,(1|2) => G.(first_line_width) + G'.(first_line_width)
          | 1,_ => shift + G'.(middle_width)
          | 2,1 => G.(first_line_width)
-         | 2,2 => list_max (exist _ (G.(middle_width)::(G.(last_line_width) + G'.(first_line_width))::(shift + G'.(middle_width))::nil)
+         | 2,2 => list_max (exist _ 
+                              (G.(middle_width)::
+                              (G.(last_line_width) + G'.(first_line_width))::
+                              (shift + G'.(middle_width))::
+                               nil)
                                  (@nil_cons _ _ _))
          | 2,_ => max (G.(last_line_width) + G'.(first_line_width)) (shift + G'.(middle_width))
          | _,1 => G.(middle_width)
          | _,2 => max G.(middle_width) (G.(last_line_width) + G'.(first_line_width))
-         | _,_ => list_max (exist _ (G.(middle_width)::(G.(last_line_width) + G'.(first_line_width))::(shift + G'.(middle_width))::nil)
-                                 (@nil_cons _ _ _))
+         | _,_ => list_max (exist _ 
+                                (G.(middle_width)::
+                                (G.(last_line_width) + G'.(first_line_width))::
+                                (shift + G'.(middle_width))::
+                                 nil)
+                                    (@nil_cons _ _ _))
          end
       in
         let first_line_width_new :=
-          if (G.(height) =? 1) then G.(first_line_width) + G'.(first_line_width) else G.(first_line_width)
+          if (G.(height) =? 1) then 
+              G.(first_line_width) + G'.(first_line_width) 
+          else 
+              G.(first_line_width)
         in
           let last_line_width_new := 
-            if (G'.(height) =? 1) then G'.(last_line_width) + G.(last_line_width) else G'.(last_line_width) + shift
+            if (G'.(height) =? 1) then 
+                G'.(last_line_width) + G.(last_line_width) 
+            else 
+                G'.(last_line_width) + shift
           in
             T
-            (G.(height) + G'.(height) - 1)
-            first_line_width_new
-            middle_width_new
-            last_line_width_new
-            (fun s t => G.(to_text) s (G'.(to_text) (s + shift) t))
+              (G.(height) + G'.(height) - 1)
+              first_line_width_new
+              middle_width_new
+              last_line_width_new
+              (fun s t => G.(to_text) s (G'.(to_text) (s + shift) t))
   end.
 
 
@@ -158,12 +190,9 @@ Definition split regexp :=
   in sp_helper 0.
 
 Definition of_string s :=
-  let 
-    lines := split "\n" s
-  in
-    let
-      lineFormats := map line lines
-    in fold_left add_above lineFormats empty.
+  let lines := split "\n" s in
+  let lineFormats := map line lines in 
+  fold_left add_above lineFormats empty.
 
 Definition ident shift f :=
   match f with
