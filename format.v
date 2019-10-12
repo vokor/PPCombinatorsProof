@@ -25,13 +25,9 @@ Definition compare (G:t) (G':t): comparison :=
 
 Definition empty: t := T 0 0 0 0 (fun s t => t).
 
-Definition line (nt:string): t := 
-    T 
-      1
-      (String.length nt)
-      (String.length nt)
-      (String.length nt)
-      (fun s t => append nt t).
+Definition line (nt:string): t :=
+  let length := String.length nt in
+    T 1 length length length (fun s t => append nt t).
 
 Fixpoint sp n :=
     match n with
