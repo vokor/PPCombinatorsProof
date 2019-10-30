@@ -1,6 +1,5 @@
 Load format.
-
-Definition cons (a:t) (lst: list t):= a :: lst.
+Open Scope list_scope.
 
 Definition map_filter (mapf: t -> t) (filterf: t -> bool) (l: list t): list t := 
   fold_left
@@ -19,25 +18,20 @@ Definition filter_map (filterf: t -> bool) (mapf: t -> t) (l: list t): list t :=
     )
     l nil.
 
-Definition add_general (op: t -> t -> t) (width: nat) (fl: list t) (f: t): list t :=
-  map_filter (fun f' => op f' f)
-             (fun f => total_width f <=? width)
-              fl.
-
 Record pair : Type := Pair {
   fst : nat;
   snd: list t
 }.
 
-Definition filteri (filterf: nat -> bool) (lst: list t) := 
+(*Сonstructs a list of elements if their number satisfying the predicate*)
+Definition filteri (filterf: nat -> bool) (lst: list t): list t := 
   let (_, result) := 
     fold_left
       (fun p a => match p with
-         | Pair n lst => Pair (n + 1) (if (filterf n) then cons a lst else lst)
+         | Pair n lst => Pair (n + 1) (if filterf n then cons a lst else lst)
          end )
       lst (Pair 0 nil) in
   result.
-
 
 Fixpoint makeList (len:nat) (a: bool): list bool :=
     match len with
@@ -45,26 +39,27 @@ Fixpoint makeList (len:nat) (a: bool): list bool :=
       | S len => a :: (makeList len a)
     end.
 
-Fixpoint update (lst: list bool) (val: bool) (cur: nat) (pos:nat): list bool:=
-  match lst with
-  | (a::b) => if (pos =? cur) then 
-        (val::(update b val (cur + 1) pos)) else
-        (a::(update b val (cur + 1) pos))
-  | nil => nil
-  end.
+Fixpoint updateHelper (cur: nat) (lst: list bool) (val: bool) (pos: nat): list bool:=
+    match lst with
+    | a::b => if pos =? cur then 
+          val::b else
+          a:: updateHelper pos b val (cur + 1)
+    | nil => nil
+    end.
 
-(*My realisation of interi*)
-Fixpoint inner_iteri (lstt: list t) (lstb: list bool) (pos1: nat) (pos2: nat) (val: t): list bool := 
+Definition update := updateHelper 0.
+
+Fixpoint inner_iteri (lstt: list t) (lstb: list bool) (pos1: nat) (pos2: nat) (val: t): list bool :=
   match lstt with
     | (a::b) => let inner_lst :=
         if (andb (pos1 <? pos2) (nth pos2 lstb false)) then
             match compare val a with
-              | Lt => update lstb false 0 pos2
-              | Gt => update lstb false 0 pos1
+              | Lt => update lstb false pos2
+              | Gt => update lstb false pos1
               | Eq => lstb
             end
         else lstb
-      in inner_iteri b inner_lst pos1 (pos2 + 1) val  
+      in inner_iteri b inner_lst pos1 (pos2 + 1) val
     | nil => lstb
   end.
 
@@ -76,11 +71,19 @@ Fixpoint outer_iteri (lst: list t) (allLst: list t) (listb: list bool) (pos: nat
     | nil => listb
   end.
 
-Definition factorize (lst: list t) :=
+(* Remove the worst performing Docs *)
+Definition factorize (lst: list t): list t:=
   let flags := makeList (length lst) true in
   let modifyFlags := outer_iteri lst lst flags 0 in
   filteri (fun i => (nth i modifyFlags false)) lst.
 
+(*Сonstruct a list of elements satisfying the predicate*)
+Definition add_general (op: t -> t -> t) (width: nat) (fl: list t) (f: t): list t :=
+  map_filter (fun f' => op f' f)
+             (fun f => total_width f <=? width)
+              fl.
+
+(* Apply operator each with each, check predicate, construct new list, O(n^2) *)
 Definition cross_general (op: t -> t -> t) (width: nat) (fl1: list t) (fl2: list t) :=
   let cross_lst := concat (map (add_general op width fl1) fl2) in
   factorize cross_lst.
@@ -90,14 +93,14 @@ Record t' : Type := T' {
   lst     : list t
 }.
 
-Notation ">>" := (fun shift fs => 
+(* Shift each block to 'shift' positions right *)
+Notation ">>" := (fun shift fs =>
     T'
     fs.(width)
-   (filter_map (fun f => total_width f <=? fs.(width) - shift)
+   (filter_map (fun f => total_width f + shift <=? fs.(width))
                        (indent shift)
                        fs.(lst))).
 
-(*Why in original code was let default_width = ref 100? What means ref?*)
 Definition default_width := 100.
 
 Definition initial :=
@@ -110,23 +113,28 @@ Definition blank_line :=
    default_width
    ((line "")::nil).
 
+(* Construct document from 'string' using 'above' rule *)
 Notation "!" := (fun s => 
     T'
     default_width
     ((of_string s)::nil)).
 
+(* Remove blocks with height < n *)
 Notation "^" := (fun fs n => 
     T'
     fs.(width)
     (filter (fun f => f.(height) <? n) fs.(lst))).
 
+(* Use 'beside' rule for 2 documents. New document ~ n x m *)
 Notation ">|<" := (fun fs1 fs2 => 
     T'
     fs1.(width)
     (cross_general add_beside fs1.(width) fs1.(lst) fs2.(lst))).
 
+(* Add one space at the end of each block in first Doc. Union 2 Docs*)
 Notation ">||<" := (fun fs1 fs2 => fs1 >|< !(" "%string) >|< fs2).
 
+(* Use 'above' rule for 2 documents. New document ~ n x m *)
 Notation ">-<" := (fun fs1 fs2 => 
     T'
     fs1.(width)
@@ -134,21 +142,22 @@ Notation ">-<" := (fun fs1 fs2 =>
 
 Notation ">--<" := (fun fs1 fs2 => fs1 >-< blank_line >-< fs2).
 
+(* 'Fill' rule *)
 Notation ">/<" := (fun fs1 fs2 shift => 
     T'
     fs1.(width)
    (cross_general (fun fs f => add_fill fs f shift)
                   fs1.(width) fs1.(lst) fs2.(lst))).
 
+(* Choice operation *)
 Notation ">?<" := (fun fs1 fs2 => 
     T'
     max fs1.(width) fs2.(width)
     (factorize (fs1.(lst)::fs2.(lst)))).
 
-(*Remove Exception: Empty set of strings to choose from.*)
-(*hd and tl in OCaml means hd::tl ?*)
-Definition pick_best (t: t') :=
-  match t.(lst) with
+(* Pick with minimum height *)
+Definition pick_best (f1: t'): t :=
+  match f1.(lst) with
   | (hd::tl) => fold_left (fun best f =>
         if f.(height) <? best.(height)
         then f
@@ -157,13 +166,10 @@ Definition pick_best (t: t') :=
   | nil => empty
   end.
 
-(*
-In process. Will be something like this if need
-
-Definition pick_best' (t : {t : t' | nil <> t.(lst)}) :=
-  match t.(lst) with
+Definition pick_best' (t : {t : t' | nil <> lst t}) :=
+  match t with
   | exist _ x _ =>
-    match x with
+    match x.(lst) with
     | nil => empty
     | hd :: tl => fold_left (fun best f =>
         if f.(height) <? best.(height)
@@ -172,34 +178,9 @@ Definition pick_best' (t : {t : t' | nil <> t.(lst)}) :=
       tl hd
     end
   end.
-*)
-Definition to_string' (t:t') := to_string (pick_best t).
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Definition to_string' (t:t') :=
+  match t.(lst) with
+  | nil => "Empty set of strings to choose from."%string
+  | _ => to_string (pick_best t)
+  end.
