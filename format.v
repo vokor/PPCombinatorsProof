@@ -190,7 +190,7 @@ Definition of_string s :=
   let lineFormats := map line lines in 
   fold_left add_above lineFormats empty.
 
-Definition indent shift f :=
+Definition indent' shift f :=
   match f with
   | T h fw m lw to_text => T
     h
