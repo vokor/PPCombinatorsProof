@@ -1,5 +1,10 @@
-Load format.
 Open Scope list_scope.
+Load format.
+Load Doc.
+
+Module formatList.
+
+Export Format Doc.
 
 Definition map_filter (mapf: t -> t) (filterf: t -> bool) (l: list t): list t := 
   fold_left
@@ -73,7 +78,7 @@ Fixpoint outer_iteri (lst: list t) (allLst: list t) (listb: list bool) (pos: nat
 
 (* Remove the worst performing Docs *)
 Definition factorize (lst: list t): list t:=
-  let flags := makeList (length lst) true in
+  let flags := makeList (List.length lst) true in
   let modifyFlags := outer_iteri lst lst flags 0 in
   filteri (fun i => (nth i modifyFlags false)) lst.
 
@@ -85,92 +90,43 @@ Definition add_general (op: t -> t -> t) (width: nat) (fl: list t) (f: t): list 
 
 (* Apply operator each with each, check predicate, construct new list, O(n^2) *)
 Definition cross_general (op: t -> t -> t) (width: nat) (fl1: list t) (fl2: list t) :=
-  let cross_lst := concat (map (add_general op width fl1) fl2) in
+  let cross_lst := List.concat (map (add_general op width fl1) fl2) in
   factorize cross_lst.
 
-Record t' : Type := T' {
-  width   : nat;
-  lst     : list t
-}.
-
-
 (* Shift each block to 'shift' positions right *)
-Definition indentDoc (shift: nat) (fs: t') :=
-    T'
-    fs.(width)
-   (filter_map (fun f => total_width f + shift <=? fs.(width))
+Definition indentDoc (width: nat) (shift: nat) (fs: list t) :=
+   filter_map (fun f => total_width f + shift <=? width)
                        (indent' shift)
-                       fs.(lst)).
-
-Definition default_width := 100.
-
-Definition initial: t':=
-   T'
-   default_width
-   (empty::nil).
-
-Definition blank_line :=
-   T'
-   default_width
-   ((line "")::nil).
+                       fs.
 
 (* Construct document from 'string' using 'above' rule *)
-Definition constructDoc (s: string) := 
-    T'
-    default_width
-    ((of_string s)::nil).
-
-(* Remove blocks with height < n *)
-Definition removeDoc (fs: t') (n: nat) := 
-    T'
-    fs.(width)
-    (filter (fun f => f.(height) <? n) fs.(lst)).
+Definition constructDoc (s: string) := (of_string s)::nil.
 
 (* Use 'beside' rule for 2 documents. New document ~ n x m *)
-Definition besideDoc (fs1: t') (fs2: t') := 
-    T'
-    fs1.(width)
-    (cross_general add_beside fs1.(width) fs1.(lst) fs2.(lst)).
-
-(* Add one space at the end of each block in first Doc. Union 2 Docs*)
-Definition unionDoc (fs1: t') (fs2: t') := 
-  besideDoc fs1 (besideDoc (constructDoc " "%string) fs2).
+Definition besideDoc (width: nat) (fs1: list t) (fs2: list t) := 
+  cross_general add_beside width fs1 fs2.
 
 (* Use 'above' rule for 2 documents. New document ~ n x m *)
-Definition aboveDoc (fs1: t') (fs2: t') := 
-    T'
-    fs1.(width)
-    (cross_general add_above fs1.(width) fs1.(lst) fs2.(lst)).
+Definition aboveDoc (width: nat) (fs1: list t) (fs2: list t) := 
+   cross_general add_above width fs1 fs2.
 
 (* 'Fill' rule *)
-Definition fillDoc (fs1: t') (fs2: t') (shift: nat) :=
-    T'
-    fs1.(width)
-   (cross_general (fun fs f => add_fill fs f shift)
-                  fs1.(width) fs1.(lst) fs2.(lst)).
+Definition fillDoc (width: nat)(fs1: list t) (fs2: list t) (shift: nat) :=
+   cross_general (fun fs f => add_fill fs f shift)
+                  width fs1 fs2.
 
 (* Choice operation *)
-Definition choiceDoc (fs1: t') (fs2: t') := 
-    T'
-    (max fs1.(width) fs2.(width))
-    (factorize (fs1.(lst) ++ fs2.(lst))).
+Definition choiceDoc (fs1: list t) (fs2: list t) := 
+    (factorize (fs1 ++ fs2)).
 
-(* Pick with minimum height *)
-Definition pick_best (t : {t : t' | nil <> lst t}) :=
-  match t with
-  | exist _ x _ =>
-    match x.(lst) with
-    | nil => empty
-    | hd :: tl => fold_left (fun best f =>
-        if f.(height) <? best.(height)
-        then f
-        else best)
-      tl hd
-    end
+Fixpoint EvaluatorList (width: nat) (doc: Doc): list t:=
+  match doc with
+  | Text s     => constructDoc s
+  | Indent n d => indentDoc width n (EvaluatorList width d)
+  | Beside a b => besideDoc width (EvaluatorList width a) (EvaluatorList width b)
+  | Above a b  => aboveDoc width (EvaluatorList width a) (EvaluatorList width b)
+  | Choice a b => choiceDoc (EvaluatorList width a) (EvaluatorList width b)
+  | Fill a b n => fillDoc width (EvaluatorList width a) (EvaluatorList width b) n
   end.
 
-Program Definition to_string' (t:t') :=
-  match t.(lst) with
-  | nil => "Empty set of strings to choose from."%string
-  | _ => to_string (pick_best t)
-  end.
+End formatList.
