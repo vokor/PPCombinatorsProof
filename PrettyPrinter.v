@@ -1,9 +1,9 @@
-Load format.
-Load Doc.
+Require Import format.
+Require Import doc.
 
-Module PrettyPrinter.
-
-Export Format Doc.
+Require Import ZArith Int.
+Require Import Coq.Lists.List.
+Require Import String.
 
 (* Pick with minimum height *)
 Definition pick_best (in_list : {in_list : list t | nil <> in_list}) :=
@@ -27,5 +27,3 @@ Program Definition to_string' (lst: list t) :=
 
 Definition pretty (docToVar: nat -> Doc -> list t) (width: nat) (doc: Doc): string :=
   to_string' (docToVar width doc).
-
-End PrettyPrinter.

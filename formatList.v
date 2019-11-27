@@ -1,10 +1,10 @@
+Require Import format.
+Require Import doc.
+
 Open Scope list_scope.
-Load format.
-Load Doc.
-
-Module formatList.
-
-Export Format Doc.
+Require Import ZArith Int.
+Require Import Coq.Lists.List.
+Require Import String.
 
 Definition map_filter (mapf: t -> t) (filterf: t -> bool) (l: list t): list t := 
   fold_left
@@ -128,5 +128,3 @@ Fixpoint EvaluatorList (width: nat) (doc: Doc): list t:=
   | Choice a b => choiceDoc (EvaluatorList width a) (EvaluatorList width b)
   | Fill a b n => fillDoc width (EvaluatorList width a) (EvaluatorList width b) n
   end.
-
-End formatList.

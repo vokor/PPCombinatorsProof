@@ -1,7 +1,5 @@
 Require Import String.
 
-Module Doc.
-
 Inductive Doc : Type :=
   | Text (s: string)
   | Indent (t: nat) (d: Doc)
@@ -9,5 +7,3 @@ Inductive Doc : Type :=
   | Above (d: Doc) (d: Doc)
   | Choice (d: Doc) (d: Doc)
   | Fill (d: Doc) (d: Doc) (s: nat).
-
-End Doc.

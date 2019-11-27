@@ -1,9 +1,10 @@
 Require Import format.
-Open Scope list_scope.
-Load Doc.
+Require Import doc.
 
-Module formatTrival.
-Export Format Doc.
+Open Scope list_scope.
+Require Import ZArith Int.
+Require Import Coq.Lists.List.
+Require Import String.
 
 Definition cross_general (width: nat) (op: t -> t -> t) (fl1: list t) (fl2: list t) :=
   List.filter 
@@ -44,5 +45,3 @@ Fixpoint EvaluatorTrival (width: nat) (doc: Doc): list t:=
   | Choice a b => choiceDoc (EvaluatorTrival width a) (EvaluatorTrival width b)
   | Fill a b n => fillDoc width (EvaluatorTrival width a) (EvaluatorTrival width b) n
   end.
-
-End formatTrival.

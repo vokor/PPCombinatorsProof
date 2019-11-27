@@ -2,8 +2,6 @@ Require Import ZArith Int.
 Require Import String.
 Require Import Coq.Lists.List.
 
-Module Format.
-
 Record t : Type := T {
   height           : nat;
   first_line_width : nat;
@@ -201,5 +199,3 @@ Definition indent' shift f :=
     (shift + lw)
     (fun s t => append (sp shift) (to_text (shift + s) t))
   end.
-
-End Format.
