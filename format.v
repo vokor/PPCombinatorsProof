@@ -190,7 +190,7 @@ Definition of_string s :=
   let lineFormats := map line lines in 
   fold_left add_above lineFormats empty.
 
-Definition indent shift f :=
+Definition indent' shift f :=
   match f with
   | T h fw m lw to_text => T
     h
@@ -199,7 +199,3 @@ Definition indent shift f :=
     (shift + lw)
     (fun s t => append (sp shift) (to_text (shift + s) t))
   end.
-
-Notation "a >|< b" := (add_beside a b) (at level 70).
-Notation "a >-< b" := (add_above a b) (at level 70).
-Notation "a >/< b" := (add_fill a b) (at level 70).
