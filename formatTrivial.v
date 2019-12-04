@@ -13,10 +13,6 @@ Definition cross_general (width: nat) (op: t -> t -> t) (fl1: list t) (fl2: list
 
 Definition blank_line := (line "")::nil.
 
-(* Shift each block to 'shift' positions right *)
-Definition indentDoc (shift: nat) (fs: list t) :=
-  map (indent' shift) fs.
-
 (* Construct document from 'string' using 'above' rule *)
 Definition constructDoc (s: string) := (of_string s)::nil.
 
@@ -36,12 +32,12 @@ Definition fillDoc (width: nat) (fs1: list t) (fs2: list t) (shift: nat) :=
 Definition choiceDoc (fs1: list t) (fs2: list t) := 
     fs1 ++ fs2.
 
-Fixpoint EvaluatorTrival (width: nat) (doc: Doc): list t:=
+Fixpoint evaluatorTrival (width: nat) (doc: Doc): list t:=
   match doc with
   | Text s     => constructDoc s
-  | Indent n d => indentDoc n (EvaluatorTrival width d)
-  | Beside a b => besideDoc width (EvaluatorTrival width a) (EvaluatorTrival width b)
-  | Above a b  => aboveDoc width (EvaluatorTrival width a) (EvaluatorTrival width b)
-  | Choice a b => choiceDoc (EvaluatorTrival width a) (EvaluatorTrival width b)
-  | Fill a b n => fillDoc width (EvaluatorTrival width a) (EvaluatorTrival width b) n
+  | Indent n d => indentDoc width n (evaluatorTrival width d)
+  | Beside a b => besideDoc width (evaluatorTrival width a) (evaluatorTrival width b)
+  | Above a b  => aboveDoc width (evaluatorTrival width a) (evaluatorTrival width b)
+  | Choice a b => choiceDoc (evaluatorTrival width a) (evaluatorTrival width b)
+  | Fill a b n => fillDoc width (evaluatorTrival width a) (evaluatorTrival width b) n
   end.

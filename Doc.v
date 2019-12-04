@@ -1,4 +1,8 @@
 Require Import String.
+Open Scope list_scope.
+Require Import ZArith Int.
+Require Import Coq.Lists.List.
+Require Import format.
 
 Inductive Doc : Type :=
   | Text (s: string)
@@ -7,3 +11,18 @@ Inductive Doc : Type :=
   | Above (d: Doc) (d: Doc)
   | Choice (d: Doc) (d: Doc)
   | Fill (d: Doc) (d: Doc) (s: nat).
+
+
+Definition filter_map (filterf: t -> bool) (mapf: t -> t) (l: list t): list t :=
+  fold_left
+    (fun lst a => if filterf a
+                  then cons (mapf a) lst
+                  else lst
+    )
+    l nil.
+
+(* Shift each block to 'shift' positions right *)
+Definition indentDoc (width: nat) (shift: nat) (fs: list t) :=
+   filter_map (fun f => total_width f + shift <=? width)
+                       (indent' shift)
+                       fs.
