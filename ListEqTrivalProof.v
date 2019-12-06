@@ -1,5 +1,6 @@
+From hahn Require Import Hahn.
 Require Import format.
-Require Import doc.
+Require Import Doc.
 Require Import PrettyPrinter.
 Require Import formatTrivial.
 Require Import formatList.
@@ -54,15 +55,42 @@ Lemma linear_pareto_not_exist :
   forall a lst, is_exist a lst = true -> pareto (a::lst) = pareto lst.
 Admitted.
 
-Lemma linear_pareto_exist :
-  forall a lst, is_exist a lst = false -> pareto (a::lst) = a :: (pareto lst).
+  (* is_exist a (h :: l) <-> *)
+  (* is_less_than a h \/ is_exist a l. *)
+Lemma is_exist_not_cons_alt a h l  :
+  is_exist a (h :: l) = false <->
+  is_less_than a h = false /\ is_exist a l = false.
 Proof.
-  intros a lst H.
+Admitted.
+
+Lemma linear_pareto_exec_exist acc a lst (HH : is_exist a lst = false) :
+    pareto_exec acc (a::lst) = a :: (pareto_exec acc lst).
+Proof.
+  generalize dependent acc. generalize dependent a.
   induction lst.
-  + unfold pareto.
-    unfold pareto_exec. rewrite -> H.
-    simpl. reflexivity.
-  +
+  { admit. }
+  intros.
+  rewrite IHlst.
+Admitted.
+
+Lemma linear_pareto_exist :
+  forall a lst (HH : is_exist a lst = false),
+    pareto (a::lst) = a :: (pareto lst).
+Proof.
+  ins.
+  induction lst.
+  { simpls. }
+  apply is_exist_not_cons_alt in HH.
+  desf.
+  unfold pareto, pareto_exec, flip. simpls.
+  unfold flip, compose, negb. rewrite HH. desf.
+  { fold pareto_exec.
+
+  (* match goal with *)
+  (* | H : _ /\ _ |- _ => destruct H *)
+  (* end. *)
+  (* desf. *)
+  (* rewrite IHlst. *)
 Admitted.
 
 Lemma pareto_indent_common : 
@@ -116,3 +144,20 @@ Proof.
   rewrite <- H1.
   apply pareto_indent_common.
 Qed.
+
+Definition neighb_pareto (a: Doc) (b: Doc) (w: nat):=
+  << AA : pareto (evaluatorTrival w a) = (evaluatorList w a) >> /\
+  << BB : pareto (evaluatorTrival w b) = (evaluatorList w b) >>.
+
+Lemma pareto_beside :
+  forall a b w,
+    neighb_pareto a b w ->
+    pareto (formatTrivial.besideDoc w (evaluatorTrival w a) (evaluatorTrival w b)) 
+      = formatList.besideDoc w (evaluatorList w a) (evaluatorList w b).
+Proof.
+  intros a b w H.
+  red in H.
+  (* destruct H as [AA BB]. unnw. *)
+  desf.
+  unfold neighb_pareto in H.
+Admitted.

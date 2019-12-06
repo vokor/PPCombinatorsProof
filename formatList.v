@@ -1,5 +1,5 @@
 Require Import format.
-Require Import doc.
+Require Import Doc.
 
 Open Scope list_scope.
 Require Import ZArith Int.

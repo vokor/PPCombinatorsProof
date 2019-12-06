@@ -1,5 +1,5 @@
 Require Import format.
-Require Import doc.
+Require Import Doc.
 
 Require Import ZArith Int.
 Require Import Coq.Lists.List.
