@@ -21,8 +21,12 @@ Definition filter_map (filterf: t -> bool) (mapf: t -> t) (l: list t): list t :=
     )
     l nil.
 
+Definition main_pred (width: nat) (shift: nat) (elem: t) :=
+  total_width elem + shift <=? width.
+
 (* Shift each block to 'shift' positions right *)
 Definition indentDoc (width: nat) (shift: nat) (fs: list t) :=
-   filter_map (fun f => total_width f + shift <=? width)
+   filter_map (fun f => main_pred width shift f)
                        (indent' shift)
                        fs.
+

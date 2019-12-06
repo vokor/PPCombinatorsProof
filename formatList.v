@@ -15,64 +15,22 @@ Definition map_filter (mapf: t -> t) (filterf: t -> bool) (l: list t): list t :=
     )
     l nil.
 
-Record pair : Type := Pair {
-  fst : nat;
-  snd: list t
-}.
+Require Import Coq.Program.Basics.
 
-(*Сonstructs a list of elements if their number satisfying the predicate*)
-Definition filteri (filterf: nat -> bool) (lst: list t): list t := 
-  let (_, result) := 
-    fold_left
-      (fun p a => match p with
-         | Pair n lst => Pair (n + 1) (if filterf n then cons a lst else lst)
-         end )
-      lst (Pair 0 nil) in
-  result.
+(* I mean does exist B from lst : B < A *)
+Definition is_exist (a: t) (lst: list t) : bool :=
+  existsb ((flip is_less_than) a) lst.
 
-Fixpoint makeList (len:nat) (a: bool): list bool :=
-    match len with
-      | 0 => nil
-      | S len => a :: (makeList len a)
-    end.
-
-Fixpoint updateHelper (cur: nat) (lst: list bool) (val: bool) (pos: nat): list bool:=
-    match lst with
-    | a::b => if pos =? cur then 
-          val::b else
-          a:: updateHelper pos b val (cur + 1)
-    | nil => nil
-    end.
-
-Definition update := updateHelper 0.
-
-Fixpoint inner_iteri (lstt: list t) (lstb: list bool) (pos1: nat) (pos2: nat) (val: t): list bool :=
-  match lstt with
-    | (a::b) => let inner_lst :=
-        if (andb (pos1 <? pos2) (nth pos2 lstb false)) then
-            match compare val a with
-              | Lt => update lstb false pos2
-              | Gt => update lstb false pos1
-              | Eq => lstb
-            end
-        else lstb
-      in inner_iteri b inner_lst pos1 (pos2 + 1) val
-    | nil => lstb
-  end.
-
-Fixpoint outer_iteri (lst: list t) (allLst: list t) (listb: list bool) (pos: nat): list bool :=
-  match lst with
-    | (a::b) => let newList := if (nth pos listb false) then
-            (inner_iteri allLst listb pos 0 a) else listb
-        in outer_iteri b allLst newList (pos + 1)
-    | nil => listb
-  end.
+Fixpoint pareto_exec (acc: list t) (mas: list t): list t :=
+      match mas with
+      | x::xs => if (is_exist x acc) then
+            pareto_exec acc xs
+         else pareto_exec (x :: filter (compose negb (is_less_than x)) acc) xs 
+      | nil   => acc
+      end.
 
 (* Remove the worst performing Docs *)
-Definition pareto (lst: list t): list t:=
-  let flags := makeList (List.length lst) true in
-  let modifyFlags := outer_iteri lst lst flags 0 in
-  filteri (fun i => (nth i modifyFlags false)) lst.
+Definition pareto (lst: list t): list t:= pareto_exec nil lst. 
 
 (*Сonstruct a list of elements satisfying the predicate*)
 Definition add_general (op: t -> t -> t) (width: nat) (fl: list t) (f: t): list t :=
