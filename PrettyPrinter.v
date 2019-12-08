@@ -1,4 +1,4 @@
-Require Import format.
+Require Import Format.
 Require Import Doc.
 
 Require Import ZArith Int.

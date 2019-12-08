@@ -1,4 +1,4 @@
-Require Import format.
+Require Import Format.
 Require Import Doc.
 
 Open Scope list_scope.
@@ -18,14 +18,18 @@ Definition map_filter (mapf: t -> t) (filterf: t -> bool) (l: list t): list t :=
 Require Import Coq.Program.Basics.
 
 (* I mean does exist B from lst : B < A *)
-Definition is_exist (a: t) (lst: list t) : bool :=
+Definition is_less_exist (a: t) (lst: list t) : bool :=
   existsb ((flip is_less_than) a) lst.
+
+(* Remove all elements > a *)
+Definition pareto_by_elem (a: t) (lst: list t) :=
+  filter (compose negb (is_less_than a)) lst.
 
 Fixpoint pareto_exec (acc: list t) (mas: list t): list t :=
       match mas with
-      | x::xs => if (is_exist x acc) then
+      | x::xs => if (is_less_exist x acc) then
             pareto_exec acc xs
-         else pareto_exec (x :: filter (compose negb (is_less_than x)) acc) xs 
+         else pareto_exec (x :: pareto_by_elem x acc) xs 
       | nil   => acc
       end.
 

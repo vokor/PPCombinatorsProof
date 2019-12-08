@@ -2,7 +2,7 @@ Require Import String.
 Open Scope list_scope.
 Require Import ZArith Int.
 Require Import Coq.Lists.List.
-Require Import format.
+Require Import Format.
 
 Inductive Doc : Type :=
   | Text (s: string)

@@ -1,4 +1,4 @@
-Require Import format.
+Require Import Format.
 Require Import Doc.
 
 Open Scope list_scope.
