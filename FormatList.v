@@ -29,7 +29,7 @@ Fixpoint pareto_exec (acc: list t) (mas: list t): list t :=
       match mas with
       | x::xs => if (is_less_exist x acc) then
             pareto_exec acc xs
-         else pareto_exec (x :: pareto_by_elem x acc) xs 
+         else pareto_exec (pareto_by_elem x acc ++ (x::nil)) xs 
       | nil   => acc
       end.
 

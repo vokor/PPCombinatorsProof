@@ -15,6 +15,26 @@ Proof.
   intros x.
 Admitted.
 
+Lemma is_less_than_base :
+  forall a b, is_less_than a b = negb (is_less_than b a).
+Proof.
+  intros a b.
+Admitted.
+
+(*
+Lemma pareto_nil : pareto nil = nil.
+Proof.
+  unfold pareto.
+  auto.
+Qed.
+
+Lemma indent_nil :
+  forall width sh, indentDoc width sh nil = nil.
+Proof.
+  intros w s.
+  auto.
+Qed.
+*)
 Lemma pareto_text :
   forall x,
     pareto (FormatTrivial.constructDoc x) = FormatList.constructDoc x.
@@ -25,6 +45,7 @@ Proof.
   reflexivity.
 Qed.
 
+(*
 Lemma leb_correct :
   forall a, PeanoNat.Nat.leb a a = true.
 Proof.
@@ -43,11 +64,57 @@ Proof.
   rewrite -> leb_correct.
   auto.
 Qed.
+*)
+
+Lemma eq_conv_is_less :
+  forall a b,
+    (compose negb (is_less_than a)) b = negb (is_less_than a b).
+Proof.
+  intros a b.
+  unfold compose.
+  reflexivity.
+Qed.
+
+Lemma pred_filter :
+  forall predicate a (lst: list t),
+    predicate a = true -> filter predicate (a::lst) = a :: (filter predicate lst).
+Proof.
+  intros P a lst H.
+  simpl. rewrite -> H. reflexivity.
+Qed.
+
+Lemma par_elem2_not_less :
+  forall a b lst, is_less_than a b = false ->
+    pareto_by_elem a (b::lst) = b :: pareto_by_elem a lst.
+Proof.
+  intros a b lst H.
+  unfold pareto_by_elem, filter.
+  rewrite -> eq_conv_is_less.
+  rewrite -> H. auto.
+Qed.
+
+Lemma par_elem2_less :
+  forall a b lst, is_less_than a b = true ->
+    pareto_by_elem a (b::lst) = pareto_by_elem a lst.
+Proof.
+  intros a b lst H.
+  unfold pareto_by_elem, filter.
+  rewrite -> eq_conv_is_less.
+  rewrite -> H. auto.
+Qed.
 
 Lemma linear_indent_true :
   forall width sh a b, main_pred width sh a = true ->
     indentDoc width sh (a::b) = (indent' sh a) :: indentDoc width sh b.
 Proof.
+Admitted.
+
+Lemma as_pred :
+  forall width sh a b, main_pred width sh a = false /\
+    is_less_than a b = true -> main_pred width sh b = false.
+Proof.
+  intros w sh a b H.
+  destruct H as [A B].
 Admitted.
 
 Lemma linear_indent_false :
@@ -75,45 +142,46 @@ Lemma linear_indent_op_f :
      is_less_exist (indent' sh x) (indentDoc w sh xs) = false.
 Admitted.
 
-Lemma linear_pareto_not_exist :
-  forall a lst, is_less_exist a lst = true -> pareto (a::lst) = pareto lst.
-Admitted.
-
   (* is_exist a (h :: l) <-> *)
   (* is_less_than a h \/ is_exist a l. *)
 Lemma is_exist_not_cons_alt a h l  :
   is_less_exist a (h :: l) = false <->
-  is_less_than a h = false /\ is_less_exist a l = false.
+  is_less_than h a = false /\ is_less_exist a l = false.
 Proof.
 Admitted.
 
-Lemma eq_conv_is_less :
-  forall a b,
-    (compose negb (is_less_than a)) b = negb (is_less_than a b).
-Proof.
-  intros a b.
-  unfold compose.
-  reflexivity.
-Qed.
-
-Lemma par_elem2_not_less :
-  forall a b lst, is_less_than a b = false ->
-    pareto_by_elem a (b::lst) = b :: pareto_by_elem a lst.
-Proof.
-  intros a b lst H.
-  unfold pareto_by_elem, filter.
-  rewrite -> eq_conv_is_less.
-  rewrite -> H. auto.
-Qed.
-
-Lemma par_elem2_less :
+Lemma simpl_elem_par_true :
   forall a b lst, is_less_than a b = true ->
-    pareto_by_elem a (b::lst) = pareto_by_elem a lst.
+    pareto_by_elem a (pareto (b :: lst)) = pareto_by_elem a (pareto lst).
+Admitted.
+
+Lemma simpl_elem_par_false :
+  forall a b lst, is_less_than a b = false ->
+    pareto_by_elem a (pareto (b :: lst)) = pareto (b :: pareto_by_elem a lst).
+Admitted.
+
+Lemma linear_pareto_not_exist :
+  forall a lst, is_less_exist a lst = true -> pareto (a::lst) = pareto lst.
+Admitted.
+
+Lemma pareto_in_elem :
+  forall a lst, 
+    pareto_by_elem a (pareto lst) = pareto (pareto_by_elem a lst).
 Proof.
-  intros a b lst H.
-  unfold pareto_by_elem, filter.
-  rewrite -> eq_conv_is_less.
-  rewrite -> H. auto.
+  intros a lst.
+  induction lst; auto.
+  destruct (is_less_than a a0) eqn:E1.
+  { rewrite par_elem2_less; auto.
+    rewrite <- IHlst.
+    destruct (is_less_exist a0 lst) eqn:E2.
+    { rewrite linear_pareto_not_exist; auto.
+    }
+    { rewrite simpl_elem_par_true; auto.
+    }
+  }
+  { rewrite par_elem2_not_less; auto.
+    rewrite simpl_elem_par_false; auto.
+  }
 Qed.
 
 Lemma linear_pareto_exist :
@@ -121,13 +189,46 @@ Lemma linear_pareto_exist :
     pareto (a::lst) = a :: pareto_by_elem a (pareto lst).
 Proof.
   intros a lst HH.
-  induction lst; auto.
+  rewrite pareto_in_elem.
+  unfold pareto.
+  induction lst; auto. simpl.
+  rewrite -> eq_conv_is_less.
+  rewrite -> eq_conv_is_less.
   rewrite is_exist_not_cons_alt in HH.
   destruct HH as [A B].
-  destruct (is_less_exist a lst) eqn:E1.
-  discriminate B.
+  destruct (is_less_than a a0) eqn:E2.
+  { unfold flip. rewrite E2. simpl.
+    rewrite <- IHlst; auto.
+  }
+  { rewrite is_less_than_base in E2.
+    rewrite A in E2.
+    discriminate E2.
+  }
+Qed.
+
+(*
+Lemma par_less :
+  forall a lst, is_less_exist a lst = false ->
+   is_less_exist a (pareto lst) = false.
+Proof.
+  intros a lst H.
+  induction lst.
+  auto.
+  destruct (is_less_exist a0 lst) eqn:E1.
+  {
+    rewrite -> linear_pareto_not_exist.
+    rewrite is_exist_not_cons_alt in H.
+    destruct H as [A B].
+    apply IHlst. auto. auto.
+  }
+  {
+    rewrite -> linear_pareto_exist; auto.
+    rewrite -> is_exist_not_cons_alt.
+    rewrite is_exist_not_cons_alt in H.
+    destruct H as [A B].
 Admitted.
-  
+*)
+
 Lemma par_elem_one:
   forall a b lst, 
     pareto_by_elem a (pareto_by_elem b lst) = 
@@ -161,88 +262,6 @@ Proof.
   }
 Qed.
 
-Lemma par_elem_less :
-  forall a lst, is_less_exist a lst = false ->
-    pareto_by_elem a (pareto lst) = pareto lst.
-Proof.
-  intros a lst H.
-  induction lst.
-  auto.
-  rewrite is_exist_not_cons_alt in H.
-  destruct H as [A B].
-  destruct (is_less_exist a0 lst) eqn:E1.
-  rewrite -> linear_pareto_not_exist; auto.
-  rewrite -> linear_pareto_exist; auto.
-  rewrite -> par_elem2_not_less; auto.
-  rewrite -> par_elem_one.
-  rewrite -> IHlst; auto.
-Qed.
-
-Lemma par_less :
-  forall a lst, is_less_exist a lst = false ->
-   is_less_exist a (pareto lst) = false.
-Proof.
-  intros a lst H.
-  induction lst.
-  auto.
-  destruct (is_less_exist a0 lst) eqn:E1.
-  {
-    rewrite -> linear_pareto_not_exist.
-    rewrite is_exist_not_cons_alt in H.
-    destruct H as [A B].
-    apply IHlst. auto. auto.
-  }
-  {
-    rewrite -> linear_pareto_exist; auto.
-    rewrite -> is_exist_not_cons_alt.
-    rewrite is_exist_not_cons_alt in H.
-    destruct H as [A B].
-    rewrite -> par_elem_less; auto.
-  }
-Qed.
-
-Lemma pred_filter :
-  forall predicate a (lst: list t),
-    predicate a = true -> filter predicate (a::lst) = a :: (filter predicate lst).
-Proof.
-  intros P a lst H.
-  simpl. rewrite -> H. reflexivity.
-Qed.
-
-Lemma relat_less_compose :
-  forall a lst,
-    is_less_exist a lst = false -> lst = pareto_by_elem a lst.
-Proof.
-  intros a lst H.
-  unfold pareto_by_elem.
-  induction lst.
-  auto.
-  apply is_exist_not_cons_alt in H.
-  destruct H as [A B].
-  destruct (compose negb (is_less_than a) a0) eqn:E2.
-  {
-    rewrite pred_filter.
-    rewrite <- IHlst.
-    auto. auto. auto.
-  }
-  {
-    rewrite eq_conv_is_less in E2.
-    rewrite A in E2.
-    discriminate E2.
-  }
-Qed.
-
-Lemma relat_lst_and_elem : 
-  forall a lst, is_less_exist a lst = false ->
-    pareto lst = pareto_by_elem a (pareto lst).
-Proof.
-  intros a lst H.
-  apply par_less in H.
-  apply relat_less_compose.
-  apply H.
-Qed.
-
-
 Lemma pareto_indent_common : 
   forall sh x w, pareto (indentDoc w sh x) = indentDoc w sh (pareto x).
 Proof.
@@ -265,27 +284,36 @@ Proof.
            rewrite ->  linear_pareto_exist.
            rewrite -> linear_indent_true.
            rewrite -> pareto_indent_elem.
-           auto. auto. auto.
-         }
-         {  rewrite -> linear_indent_op_f.
-            auto. rewrite -> E1. rewrite E2. auto.
-         }
+           auto. auto. auto. }
+         { rewrite -> linear_indent_op_f.
+           auto. rewrite -> E1. rewrite E2. auto.
+           }
      - auto.
-     - rewrite -> linear_indent_false.
-       * destruct (is_less_exist a lst) eqn:E2.
-         { rewrite ->  linear_pareto_not_exist.
-           rewrite -> IHlst.
-           auto. auto.
+     - rewrite -> linear_indent_false; auto.
+       *  rewrite -> IHlst.
+          destruct (is_less_exist a lst) eqn:E2.
+          { rewrite ->  linear_pareto_not_exist; auto. }
+          { rewrite linear_pareto_exist, linear_indent_false; auto.
+            set (lst' := pareto lst).
+            induction lst'; auto.
+            destruct (is_less_than a a0) eqn:E3.
+            { rewrite par_elem2_less; auto.
+              rewrite <- IHlst'.
+              rewrite linear_indent_false; auto.
+              admit. (*here I need to use as_pred, rewrite linear_indent_false*)
+            }
+            { rewrite par_elem2_not_less; auto.
+              destruct (main_pred w sh a0) eqn:E4.
+              { rewrite -> linear_indent_true; auto.
+                rewrite -> linear_indent_true; auto.
+                rewrite IHlst'; auto.
+              }
+              { rewrite -> linear_indent_false; auto.
+                rewrite -> linear_indent_false; auto.
+              }
+            }
          }
-         { rewrite -> linear_pareto_exist.
-           rewrite -> IHlst.
-           rewrite -> linear_indent_false.
-           rewrite <- relat_lst_and_elem.
-           auto.
-           apply E2. apply E1. apply E2.
-         }
-       * auto.
-Qed.
+Admitted.
 
 Lemma pareto_indent : 
   forall n d width,
