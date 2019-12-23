@@ -18,9 +18,9 @@ Definition is_less_than  (G:t) (G':t): bool :=
 
 Definition compare (G:t) (G':t): comparison :=
   match is_less_than G G', is_less_than G' G with
-  | true, _ => Lt
-  | _, true => Gt
-  | _,_     => Eq
+  | true,false => Lt
+  | false,true => Gt
+  | _,_        => Eq
   end.
 
 Definition empty: t := T 0 0 0 0 (fun s t => t).

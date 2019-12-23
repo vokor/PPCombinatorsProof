@@ -12,14 +12,11 @@ Inductive Doc : Type :=
   | Choice (d: Doc) (d: Doc)
   | Fill (d: Doc) (d: Doc) (s: nat).
 
+Definition filter_map_pred (filterf: t -> bool) (mapf: t -> t) (a: t) (lst: list t) :=
+  if filterf a then cons (mapf a) lst else lst.
 
 Definition filter_map (filterf: t -> bool) (mapf: t -> t) (l: list t): list t :=
-  fold_left
-    (fun lst a => if filterf a
-                  then cons (mapf a) lst
-                  else lst
-    )
-    l nil.
+  fold_right (filter_map_pred filterf mapf) nil l.
 
 Definition main_pred (width: nat) (shift: nat) (elem: t) :=
   total_width elem + shift <=? width.
