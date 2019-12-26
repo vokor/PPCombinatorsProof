@@ -7,7 +7,7 @@ Require Import String.
 Require Import Coq.Program.Basics.
 Require Import Coq.Lists.List.
 Require Import Coq.Init.Datatypes.
-(*Require Import Coq.Arith.PeanoNat.*)
+Require Import Coq.Bool.Bool.
 
 Lemma listEqTrivialProof :
   forall x width,
@@ -15,85 +15,6 @@ Lemma listEqTrivialProof :
 Proof.
   intros x.
 Admitted.
-
-Lemma is_less_than_Lt :
-  forall a b, compare a b = Lt ->
-    is_less_than a b = negb (is_less_than b a).
-Proof.
-  intros a b H.
-  unfold compare in H.
-  destruct (is_less_than a b) eqn:E1.
-  { destruct (is_less_than b a) eqn:E2.
-    discriminate H. auto.
-  }
-  destruct (is_less_than b a) eqn:E2.
-  discriminate H. discriminate H.
-Qed.
-
-Lemma is_less_than_Gt :
-  forall a b, compare a b = Gt ->
-    is_less_than a b = false.
-Proof.
-  intros a b H.
-  unfold compare in H.
-  destruct (is_less_than a b) eqn:E1.
-  destruct (is_less_than b a) eqn:E2.
-  discriminate H. discriminate H.
-  reflexivity.
-Qed.
-
-Lemma is_less_than_Eq :
-  forall a b, compare a b = Eq ->
-    is_less_than a b = is_less_than b a.
-Proof.
-  intros a b H.
-  unfold compare in H.
-  destruct (is_less_than a b) eqn:E1.
-  { destruct (is_less_than b a) eqn:E2.
-    reflexivity. discriminate H.
-  }
-  destruct (is_less_than b a) eqn:E2.
-  discriminate H. reflexivity.
-Qed.
-
-Lemma Eq_uni :
-  forall a b, compare a b = Eq -> compare b a = Eq.
-Proof.
-  intros a b.
-  unfold compare.
-  destruct (is_less_than a b).
-  destruct (is_less_than b a).
-  auto. discriminate.
-  destruct (is_less_than b a).
-  discriminate. auto.
-Qed.
-
-Lemma is_less_than_Same :
-  forall a, is_less_than a a = true.
-Proof.
-  intro a.
-  unfold is_less_than.
-Admitted.
-
-Lemma less_base :
-  forall a b, negb (is_less_than a b) = true ->
-    is_less_than a b = false.
-Proof.
-  intros a b H.
-  destruct (is_less_than a b) eqn:E1.
-  simpl in H. discriminate H.
-  reflexivity.
-Qed.
-
-Lemma less_base' :
-  forall a b, negb (is_less_than a b) = false ->
-    is_less_than a b = true.
-Proof.
-  intros a b H.
-  destruct (is_less_than a b) eqn:E1.
-  simpl in H. reflexivity.
-  discriminate H.
-Qed.
 
 Lemma pareto_text :
   forall x,
@@ -121,34 +42,6 @@ Proof.
   intros P a lst H.
   simpl. rewrite -> H. reflexivity.
 Qed.
-
-Lemma par_elem2_not_less :
-  forall a b lst, is_less_than a b = false ->
-    pareto_by_elem a (b::lst) = b :: pareto_by_elem a lst.
-Proof.
-  intros a b lst H.
-  unfold pareto_by_elem, filter.
-  rewrite -> eq_conv_is_less.
-  rewrite -> H. auto.
-Qed.
-
-Lemma par_elem2_less :
-  forall a b lst, is_less_than a b = true ->
-    pareto_by_elem a (b::lst) = pareto_by_elem a lst.
-Proof.
-  intros a b lst H.
-  unfold pareto_by_elem, filter.
-  rewrite -> eq_conv_is_less.
-  rewrite -> H. auto.
-Qed.
-
-Lemma as_pred :
-  forall width sh a b, main_pred width sh a = false /\
-    is_less_than a b = true -> main_pred width sh b = false.
-Proof.
-  intros w sh a b H.
-  destruct H as [A B].
-Admitted.
 
 Lemma is_exist_not_cons_alt a h l  :
   is_less_exist a (h :: l) = false <->
@@ -249,8 +142,8 @@ Proof.
   induction lst. auto.
   simpl.
   unfold flip.
-  rewrite IHlst.
-  rewrite orbT. reflexivity.
+  rewrite IHlst, orbT.
+  reflexivity.
 Qed.
 
 
@@ -260,22 +153,12 @@ Lemma is_less_than_transitivity :
 Proof.
   Admitted.
 
-Lemma compare_Eq_transitivity :
-  forall a b c, compare a b = Eq /\ is_less_than c b = true -> is_less_than c a = true.
+Lemma is_less_than_reflexivity :
+  forall a, is_less_than a a = true.
 Proof.
-  intros a b c H.
-  destruct H as [A B].
-  unfold compare in A.
-  destruct  (is_less_than a b) eqn:E1.
-  { destruct (is_less_than b a) eqn:E2.
-    all: apply (is_less_than_transitivity c b a); auto.
-    discriminate A.
-  }
-  destruct (is_less_than b a) eqn:E2.
-  discriminate A.
-Admitted.
-
-Lemma is_less_exist_transitivity :
+  Admitted.
+  
+Lemma is_less_exist_transitivity_1 :
   forall a b lst, is_less_than a b = true /\ is_less_exist a lst = true 
       -> is_less_exist b lst = true.
 Proof.
@@ -286,62 +169,52 @@ Proof.
   rewrite is_exist_cons_alt in B.
   destruct B as [C|C].
   { simpl. unfold flip.
-    rewrite C. rewrite (is_less_than_transitivity a0 a b); auto.
+    rewrite C, (is_less_than_transitivity a0 a b); auto.
   }
-  { simpl. rewrite IHlst, C; auto.
-    unfold flip.
-    destruct (is_less_than a0 b) eqn:E1.
-    { destruct (is_less_than a0 a); auto.
-    }
-    { destruct (is_less_than a0 a); auto.
-    }
-  }
+  simpl. rewrite IHlst, C; auto.
+  repeat rewrite orb_true_r.
+  reflexivity.
 Qed.
 
-
-Lemma is_less_exist_uni :
-  forall a b lst, is_less_than a b = true /\ is_less_exist b lst = false-> 
-    is_less_exist a (pareto_by_elem b lst) = is_less_exist a lst.
+Lemma is_less_exist_transitivity_2 :
+  forall a b lst, is_less_exist a lst = false /\ is_less_exist b lst = true 
+      -> is_less_than a b = true.
 Proof.
   intros a b lst H.
-  induction lst. auto.
   destruct H as [A B].
-  rewrite is_exist_not_cons_alt in B.
-  destruct B as [B C].
-  simpl. rewrite eq_conv_is_less.
-  destruct (is_less_than b a0) eqn:E1.
-  { simpl. unfold flip.
-    rewrite IHlst.
-    destruct (is_less_exist a lst) eqn:E2.
-    {
-      destruct (compare a0 a) eqn:E3.
-      rewrite orbT; auto.
-      rewrite orbT; auto.
-      rewrite orbT; auto.
-    }
-    destruct (compare a a0) eqn:E3.
-    (* Here need discriminate B, because a = b = a0, but a0 <= b - false ??? *)
-    admit.
-    { assert (D : is_less_than a a0 = true).
-      { apply (is_less_than_transitivity a b a0);auto.
-      }
-      rewrite is_less_than_Lt in D; auto.
-      apply less_base in D. rewrite D. auto.
-    }
-    assert (D : is_less_than a a0 = true).
-      { apply (is_less_than_transitivity a b a0);auto.
-      }
-    rewrite is_less_than_Gt in D. discriminate D. auto.
-    auto.
-  }
-  simpl.
-  rewrite IHlst.
-  auto. auto.
+  rewrite <- B.
+  symmetry.
+  induction lst. discriminate B.
+  destruct (is_less_than a b). auto.
+  apply is_exist_not_cons_alt.
+  apply is_exist_not_cons_alt in A.
+  destruct A as [A1 A2].
+  (* discriminate IHlst *)
 Admitted.
+
+Lemma par_elem2_not_less :
+  forall a b lst, is_less_than a b = false ->
+    pareto_by_elem a (b::lst) = b :: pareto_by_elem a lst.
+Proof.
+  intros a b lst H.
+  unfold pareto_by_elem, filter.
+  rewrite -> eq_conv_is_less.
+  rewrite -> H. auto.
+Qed.
+
+Lemma par_elem2_less :
+  forall a b lst, is_less_than a b = true ->
+    pareto_by_elem a (b::lst) = pareto_by_elem a lst.
+Proof.
+  intros a b lst H.
+  unfold pareto_by_elem, filter.
+  rewrite -> eq_conv_is_less.
+  rewrite -> H. auto.
+Qed.
 
 Lemma pareto_by_elem_linear :
   forall a lst lst', pareto_by_elem a (lst ++ lst') = 
-    (pareto_by_elem a lst) ++ (pareto_by_elem a lst').
+    pareto_by_elem a lst ++ pareto_by_elem a lst'.
 Proof.
   intros a lst lst'.
   induction lst. auto.
@@ -350,6 +223,15 @@ Proof.
   destruct (is_less_than a a0) eqn:E1.
   simpl. apply IHlst.
   simpl. rewrite IHlst. reflexivity.
+Qed.
+
+Lemma pareto_by_elem_simpl :
+  forall a x xs lst, is_less_than a x = true -> pareto_by_elem a (lst ++ x :: xs) =
+    pareto_by_elem a (lst ++ xs).
+Proof.
+  intros a x xs lst H.
+  repeat rewrite pareto_by_elem_linear.
+  rewrite par_elem2_less; auto.
 Qed.
 
 Lemma pareto_by_elem_swap :
@@ -382,72 +264,6 @@ Proof.
 Qed.
 
 Lemma pareto_exec_elem :
-  forall a b lst lst', is_less_than a b = true -> pareto_by_elem a (pareto_exec lst lst') =
-      pareto_by_elem a (pareto_exec (pareto_by_elem b lst) lst').
-Proof.
-  intros a b lst lst' H.
-  destruct lst. auto.
-  generalize dependent t.
-  generalize dependent lst.
-  induction lst'.
-  { intros lst t.
-    simpl.
-    repeat rewrite eq_conv_is_less.
-    destruct (is_less_than a t) eqn:E1.
-    { simpl.
-      destruct (is_less_than b t) eqn:E2.
-      { simpl. apply pareto_by_elem_swap. auto.
-      }
-     simpl. rewrite eq_conv_is_less, E1. simpl.
-     apply pareto_by_elem_swap. auto.
-    }
-    simpl.
-    destruct (is_less_than b t) eqn:E2.
-    { assert (L1: is_less_than a t = true).
-      { apply (is_less_than_transitivity a b t). auto.
-      }
-      rewrite L1 in E1. discriminate E1.
-    }
-    simpl.
-    rewrite eq_conv_is_less, E1. simpl. 
-    induction lst. auto.
-    simpl.
-    repeat rewrite eq_conv_is_less.
-    destruct (is_less_than a a0) eqn:E3.
-    { destruct (is_less_than b a0) eqn:E4.
-      { simpl. auto.
-      }
-      simpl.
-      rewrite eq_conv_is_less, E3.
-      simpl. rewrite IHlst. reflexivity.
-    }
-    destruct (is_less_than b a0) eqn:E4.
-    simpl.
-    assert (L1: is_less_than a a0 = true).
-    { apply (is_less_than_transitivity a b a0). auto.
-    }
-    rewrite L1 in E3. discriminate E3.
-    simpl. rewrite eq_conv_is_less, E3.
-    simpl. rewrite <- pareto_by_elem_swap.
-    all: auto.
-  }
-  intros lst t. simpl.
-  repeat rewrite eq_conv_is_less.
-  unfold flip.
-  destruct (is_less_than b t) eqn:E1.
-  { simpl.
-    destruct (compare t a0) eqn:cmp.
-    { destruct (is_less_than a0 t) eqn:E2.
-      { rewrite is_less_than_Eq; auto.
-        rewrite E2. simpl.
-        destruct (is_less_exist a0 (pareto_by_elem b lst)) eqn:E3.
-        { rewrite IHlst'.
-          simpl. rewrite eq_conv_is_less, E1. auto.
-        }
-        rewrite is_less_exist_uni in E3.
-Admitted.
-
-Lemma pareto_exec_elem_H :
   forall a x lst xs lst', is_less_than a x = true -> pareto_by_elem a (pareto_exec (lst ++ x :: xs) lst') 
   = pareto_by_elem a (pareto_exec (lst ++ xs) lst').
 Proof.
@@ -459,7 +275,7 @@ Proof.
   { simpl.
     intros xs b H lst.
     repeat rewrite pareto_by_elem_linear.
-    simpl. 
+    simpl.
     rewrite eq_conv_is_less, H.
     auto.
   }
@@ -467,7 +283,7 @@ Proof.
   simpl.
   destruct (is_less_exist a0 (lst ++ b :: xs)) eqn:E1.
   { destruct (is_less_exist a0 (lst ++ xs)) eqn:E2. auto.
-    assert (L1: is_less_than b a0 = true).
+    assert (L1': is_less_than b a0 = true).
     { rewrite is_exist_cons_all in E1.
       destruct E1 as [AA|AA].
       { rewrite is_exist_not_cons_all in E2.
@@ -482,65 +298,56 @@ Proof.
       discriminate B.
     }
     repeat rewrite IHlst'.
-    admit. (* use pareto_exec_elem *)
+    { set (mas:= lst ++ xs). 
+      rewrite app_nil_r.
+      rewrite <- (app_nil_l mas) at 1.
+      rewrite <- (app_nil_l (pareto_by_elem a0 mas)).
+      generalize (nil : list t) as mas'.
+      induction mas. auto.
+      destruct (is_less_than a0 a1) eqn:E3.
+      { intro mas'.
+        rewrite IHlst', par_elem2_less; auto.
+        apply (is_less_than_transitivity a a0 a1).
+        rewrite (is_less_than_transitivity a b a0).
+        all: auto.
+      }
+      intro mas'.
+      rewrite par_elem2_not_less; auto.
+      assert (Rew: forall l, mas' ++ a1::l = (mas' ++ a1::nil) ++ l).
+      { intro l. induction mas'. auto.
+        simpl. rewrite IHmas'. reflexivity.
+      }
+      rewrite Rew. rewrite (Rew (pareto_by_elem a0 mas)).
+      auto.
+    }
     apply (is_less_than_transitivity a b a0).
     all: auto.
   }
-Admitted.
-
-Lemma pareto_exec_destruct :
-  forall a b c lst, is_less_than a b = true  ->
-  pareto_by_elem a (pareto_exec (b :: c :: nil) lst) =
-    pareto_by_elem a (pareto_exec (c :: nil) lst).
-Proof.
-  intros a b c lst H.
-  generalize dependent b.
-  generalize dependent c.
-  induction lst.
-  { intros c b H.
-    simpl.
-    rewrite eq_conv_is_less, H.
-    simpl. reflexivity.
+  rewrite is_exist_not_cons_all, is_exist_not_cons_alt in E1.
+  destruct E1, H1.
+  destruct (is_less_exist a0 (lst ++ xs)) eqn:E2.
+  { rewrite is_exist_cons_all in E2.
+    destruct E2.
+    rewrite H0 in H3. discriminate H3.
+    rewrite H2 in H3. discriminate H3.
   }
-  intros c b H.
-  simpl. unfold flip.
-  destruct (is_less_than b a0) eqn:E1.
-  { repeat rewrite eq_conv_is_less.
-    simpl.
-    destruct (is_less_than c a0) eqn:E2.
-    { simpl. rewrite IHlst; auto.
-    }
-    simpl.
-    destruct (is_less_than a0 c) eqn:E3.
-    { simpl. rewrite IHlst; auto.
-      rewrite (pareto_exec_elem a c (c::nil) lst).
-      rewrite (pareto_exec_elem a a0 (a0::nil) lst).
-      simpl. repeat rewrite eq_conv_is_less.
-      repeat rewrite is_less_than_Same. auto.
-      apply (is_less_than_transitivity a b a0); auto.
-      apply (is_less_than_transitivity a b c).
-      rewrite (is_less_than_transitivity b a0 c).
-      auto. auto.
-    }
-    simpl.
-    rewrite IHlst; auto.
-    rewrite (pareto_exec_elem a a0 (c :: a0 :: nil) lst).
-    simpl. repeat rewrite eq_conv_is_less.
-    destruct (is_less_than a0 c) eqn:E4.
-    discriminate.
-    repeat rewrite is_less_than_Same. auto.
-    apply (is_less_than_transitivity a b a0); auto.
-  }
-  destruct (is_less_than c a0) eqn:E2.
-  { simpl. apply IHlst; auto.
-  }
-  simpl. repeat rewrite eq_conv_is_less.
   destruct (is_less_than a0 b) eqn:E3.
-  { simpl. reflexivity.
+  { rewrite pareto_by_elem_simpl; auto.
   }
-  simpl.
-  set (v := (if ~~ is_less_than a0 c then c :: nil else nil) ++ a0 :: nil).
-  apply (pareto_exec_elem_H a b nil). auto.
+  repeat rewrite pareto_by_elem_linear.
+  rewrite par_elem2_not_less; auto.
+  repeat rewrite <- app_assoc.
+  rewrite <- app_comm_cons, IHlst'; auto.
+Qed.
+
+Lemma pareto_exec_elem_simpl :
+  forall a x xs lst', is_less_than a x = true -> pareto_by_elem a (pareto_exec (x :: xs) lst') 
+  = pareto_by_elem a (pareto_exec xs lst').
+Proof.
+  intros a x xs.
+  rewrite <- (app_nil_l (x::xs)).
+  rewrite <- (app_nil_l xs).
+  apply pareto_exec_elem.
 Qed.
 
 Lemma simpl_elem_par_true :
@@ -555,65 +362,130 @@ Proof.
     rewrite eq_conv_is_less, H.
     auto.
   }
-  { intros b H.
-    unfold pareto.
+  intros b H.
+  unfold pareto.
+  simpl.
+  rewrite eq_conv_is_less.
+  unfold flip.
+  unfold pareto in IHlst. simpl in IHlst.
+  destruct (is_less_than a0 b) eqn:E1.
+  { simpl.
+    destruct (is_less_than b a0) eqn:E2; auto.
     simpl.
-    rewrite eq_conv_is_less.
-    destruct (is_less_than a0 b) eqn:E1.
-    { unfold flip.
-      destruct (compare a0 b) eqn:E2.
-      { rewrite is_less_than_Eq in E1; auto.
-        rewrite E1. simpl.
-        assert (Lem : is_less_than a a0 = true).
-        { rewrite (is_less_than_transitivity a b a0); auto.
-        }
-      unfold pareto in IHlst. simpl in IHlst.
-      rewrite IHlst; auto. rewrite IHlst; auto.
-      }
-      { rewrite is_less_than_Lt in E1; auto.
-        apply less_base in E1.
-        rewrite E1. auto.
-      }
-      rewrite is_less_than_Gt in E1; auto.
-      discriminate E1.
-    }
-    { unfold flip.
-      assert (Lem: is_less_than b a0 = false -> pareto_by_elem a (pareto_exec (b :: a0 :: nil) lst) = 
-      pareto_by_elem a (pareto_exec (a0 :: nil) lst)).
-      { intro E2.
-        rewrite pareto_exec_destruct; auto.
-      }
-      simpl.
-      destruct (is_less_than b a0) eqn:E2.
-      { simpl.
-        rewrite (pareto_exec_elem_H a b nil nil); auto.
-        rewrite (pareto_exec_elem_H a a0 nil nil).
-        reflexivity.
-        apply (is_less_than_transitivity a b a0); auto.
-      }
-      simpl. rewrite pareto_exec_destruct; auto.
-    }
+    repeat rewrite IHlst.
+    all: auto. apply (is_less_than_transitivity a b a0); auto.
   }
+  destruct (is_less_than b a0) eqn:E2.
+  { simpl.
+    repeat rewrite IHlst; auto.
+    apply (is_less_than_transitivity a b a0); auto.
+  }
+  simpl.
+  apply pareto_exec_elem_simpl; auto.
 Qed.
 
-(* Need correction in proofs*)
+Notation "lst += a" := (lst ++ (a::nil)) (at level 0).
 
-(*
-Lemma linear_pareto_not_exist :
-  forall a lst, is_less_exist a lst = true -> pareto (a::lst) = pareto lst.
+Lemma pareto_exec_exist :
+  forall a lst l r, is_less_exist a lst = true -> pareto_exec lst (l ++ a::r) =
+    pareto_exec lst (l ++ r).
+Proof.
+  intros a lst l r H.
+  generalize dependent lst.
+  induction l.
+  { intros lst H.
+    simpl. rewrite H. reflexivity.
+  }
+  intros lst H.
+  simpl.
+  destruct (is_less_exist a0 lst) eqn:E1.
+  { apply IHl; auto.
+  }
+  apply IHl.
+  apply is_exist_cons_all.
+  rewrite is_exist_cons_alt.
+  rewrite (is_less_exist_transitivity_2 a0 a lst); auto.
+Qed.
+
+Lemma pareto_exec_same : 
+  forall lst lst', pareto_exec lst' (lst ++ lst') = pareto_exec lst' lst.
+Proof.
+  intros lst lst'.
+  induction lst.
+  { simpl.
+    induction lst' using rev_ind. auto.
+    simpl. destruct lst'.
+    { simpl. unfold flip.
+      rewrite is_less_than_reflexivity. simpl.
+      reflexivity.
+    }
+    simpl. unfold flip.
+    rewrite is_less_than_reflexivity. simpl.
+Admitted.
+
+Lemma linear_pareto_exist :
+  forall a lst, is_less_exist a lst = true -> pareto (lst += a) = pareto lst.
 Proof.
   intros a lst H.
-  unfold pareto. simpl.
+  unfold pareto.
+  generalize dependent (nil: list t).
+  induction lst. discriminate H.
+  intro lst'.
+  rewrite is_exist_cons_alt in H.
+  destruct H as [H|H].
+  { simpl.
+    destruct (is_less_exist a0 lst') eqn:E1.
+    { rewrite pareto_exec_exist.
+Admitted.
+  (*
+  assert (link : forall x mas, pareto_by_elem x mas = mas ->
+    pareto_exec nil mas = pareto_by_elem x (pareto_exec nil mas)).
+  { intros x mas.
+    induction mas. auto.
+    simpl. rewrite eq_conv_is_less.
+    destruct (is_less_than x a0) eqn:E1.
+    { simpl.
+      
+    }
+  }
+  assert (exist_bigger: forall (mas: list t), exists x, pareto_by_elem x mas = mas).
+  { intro mas.
+    induction mas.
+    simpl. exists empty. reflexivity.
+    simpl. 
+    
+    
   generalize dependent a.
+  generalize dependent (nil: list t).
   induction lst.
   {
-    intros a H.
+    intros lst a H.
     simpl in H. discriminate H.
   }
-  { intros b H.
+  { intros l b H.
     rewrite is_exist_cons_alt in H.
+    simpl. unfold flip.
     destruct H as [A|A].
-    { simpl. unfold flip.
+    { destruct (is_less_than b a) eqn:E1.
+      { simpl. admit. (* Here a and b are equals in our context *)
+      }
+      simpl. rewrite eq_conv_is_less, A. simpl.
+      auto.
+    }
+    destruct (is_less_than b a) eqn:E1.
+    { simpl. repeat rewrite IHlst.
+      reflexivity.
+      apply (is_less_exist_transitivity b a).
+      all: auto.
+    }
+    simpl. rewrite eq_conv_is_less.
+    destruct (is_less_than a b) eqn:E2; auto.
+    simpl. 
+    
+        rewrite is_less_than_base.
+      
+      
+      
       destruct (compare a b) eqn:E1.
       { rewrite is_less_than_Eq in A.
         rewrite A.
@@ -637,10 +509,11 @@ Proof.
     }
   }
 Qed.
+*)
 
-Lemma linear_pareto_exist :
+Lemma linear_pareto_not_exist :
   forall a lst (HH : is_less_exist a lst = false),
-    pareto (a::lst) = a :: pareto_by_elem a (pareto lst).
+    pareto (lst += a) = (pareto lst) += a.
 Proof.
   intros a lst H.
   unfold pareto. simpl.
@@ -651,48 +524,24 @@ Proof.
   { intros b H.
     rewrite is_exist_not_cons_alt in H.
     destruct H as [A B].
-    simpl. rewrite eq_conv_is_less, A.
-    unfold flip. rewrite is_less_than_base, A.
+    simpl.
+    Admitted.
+   (* rewrite is_less_than_base, A.
     simpl. rewrite IHlst; auto.
     rewrite <- (simpl_elem_par_true b a).
     auto.
     rewrite is_less_than_base, A.
     auto.
   }
-Qed.
+Qed. *)
 
-Lemma par_elem_one:
-  forall a b lst, 
-    pareto_by_elem a (pareto_by_elem b lst) = 
-    pareto_by_elem b (pareto_by_elem a lst).
+Lemma as_pred :
+  forall width sh a b, main_pred width sh a = false /\
+    is_less_than a b = true -> main_pred width sh b = false.
 Proof.
-  intros a b lst.
-  induction lst; auto.
-  destruct (is_less_than b a0) eqn:E1.
-  {
-    rewrite -> par_elem2_less; auto.
-    rewrite -> IHlst.
-    destruct (is_less_than a a0) eqn:E2.
-    rewrite -> par_elem2_less; auto.
-    rewrite -> par_elem2_not_less; auto.
-    rewrite -> par_elem2_less; auto.
-  }
-  {
-    rewrite -> par_elem2_not_less; auto.
-    destruct (is_less_than a a0) eqn:E2.
-    {
-      rewrite -> par_elem2_less; auto.
-      rewrite -> IHlst.
-      rewrite -> par_elem2_less; auto.
-    }
-    {
-      rewrite -> par_elem2_not_less; auto.
-      rewrite -> IHlst.
-      rewrite -> par_elem2_not_less; auto.
-      rewrite -> par_elem2_not_less; auto.
-    }
-  }
-Qed.
+  intros w sh a b H.
+  destruct H as [A B].
+Admitted.
 
 Lemma indent'_linear :
   forall a b sh, is_less_than a b = is_less_than (indent' sh a) (indent' sh b).
@@ -710,7 +559,7 @@ Proof.
   rewrite (indent'_linear a b sh).
 Admitted.
 
-Lemma linear_indent_true :
+Lemma linear_indent_true_f :
   forall width sh a b, main_pred width sh a = true ->
     indentDoc width sh (a::b) = (indent' sh a) :: indentDoc width sh b.
 Proof.
@@ -720,7 +569,7 @@ Proof.
   rewrite P. reflexivity.
 Qed.
 
-Lemma linear_indent_false :
+Lemma linear_indent_false_f :
   forall width sh x xs, main_pred width sh x = false ->
     indentDoc width sh (x::xs) = indentDoc width sh xs.
 Proof.
@@ -730,6 +579,38 @@ Proof.
   rewrite P. reflexivity.
 Qed.
 
+Lemma linear_indent_true_e :
+  forall w sh a lst, main_pred w sh a = true ->
+    indentDoc w sh (lst += a) = (indentDoc w sh lst) += (indent' sh a).
+Proof.
+  intros w sh a lst P.
+  induction lst.
+  { simpl. unfold filter_map_pred.
+    rewrite P. reflexivity.
+  }
+  simpl. unfold filter_map_pred.
+  destruct (main_pred w sh a0) eqn:E1.
+  { simpl. rewrite IHlst. reflexivity.
+  }
+  apply IHlst.
+Qed.
+
+Lemma linear_indent_false_e :
+  forall w sh a lst, main_pred w sh a = false ->
+    indentDoc w sh (lst += a) = indentDoc w sh lst.
+Proof.
+  intros w sh a lst P.
+  induction lst.
+  { simpl. unfold filter_map_pred.
+    rewrite P. reflexivity.
+  }
+  simpl. unfold filter_map_pred.
+  destruct (main_pred w sh a0) eqn:E1.
+  { simpl. rewrite IHlst. reflexivity.
+  }
+  apply IHlst.
+Qed.
+
 Lemma linear_indent_op :
   forall w sh x xs, main_pred w sh x = true ->
      is_less_exist (indent' sh x) (indentDoc w sh xs) = is_less_exist x xs.
@@ -737,7 +618,7 @@ Proof.
   intros w sh x xs H.
   induction xs; auto.
   destruct (main_pred w sh a) eqn:E1.
-  { rewrite linear_indent_true; auto.
+  { rewrite linear_indent_true_f; auto.
     destruct (is_less_exist x (a :: xs)) eqn:E2.
     { rewrite is_exist_cons_alt, IHxs.
       rewrite is_exist_cons_alt in E2.
@@ -752,24 +633,23 @@ Proof.
     rewrite <- indent'_linear.
     auto.
   }
-  rewrite linear_indent_false; auto.
+  rewrite linear_indent_false_f; auto.
   rewrite IHxs.
   destruct (is_less_exist x (a :: xs)) eqn:E2.
-  {
-  rewrite is_exist_cons_alt in E2.
-  destruct E2 as [E2'|E2']; auto.
-  assert (L : is_less_than x a = true).
-  { rewrite (main_pred_less x a w sh).
-    reflexivity.
-    auto.
-  }
-  rewrite is_less_than_base in L.
-  rewrite E2' in L.
-  discriminate L.
+  { rewrite is_exist_cons_alt in E2.
+    destruct E2 as [E2|E2]; auto.
+    assert (L : is_less_than x a = true).
+    { rewrite (main_pred_less x a w sh).
+      reflexivity.
+      auto.
+    }
+    assert (D : main_pred w sh x = false).
+    { apply (as_pred w sh a x). auto.
+    }
+    rewrite D in H. discriminate H.
   }
   rewrite is_exist_not_cons_alt in E2.
-  destruct E2 as [A B].
-  auto.
+  destruct E2. apply H1.
 Qed.
 
 Lemma pareto_indent_elem:
@@ -781,76 +661,50 @@ Proof.
   destruct (is_less_than a a0) eqn:E1.
   { rewrite par_elem2_less; auto.
     destruct (main_pred w sh a0) eqn:E2.
-    { rewrite linear_indent_true; auto.
+    { rewrite linear_indent_true_f; auto.
       rewrite par_elem2_less, IHlst.
       reflexivity.
       rewrite (indent'_linear a a0 sh) in E1.
       auto.
     }
-    rewrite linear_indent_false; auto.
+    rewrite linear_indent_false_f; auto.
   }
   rewrite par_elem2_not_less; auto.
   destruct (main_pred w sh a0) eqn:E2.
-  { rewrite linear_indent_true; auto.
+  { rewrite linear_indent_true_f; auto.
     rewrite par_elem2_not_less, IHlst.
-    rewrite linear_indent_true; auto.
+    rewrite linear_indent_true_f; auto.
     rewrite (indent'_linear a a0 sh) in E1.
     auto.
   }
-  rewrite linear_indent_false.
-  rewrite linear_indent_false.
+  repeat rewrite linear_indent_false_f.
   all: auto.
 Qed.
 
 Lemma pareto_indent_common : 
-  forall sh x w, pareto (indentDoc w sh x) = indentDoc w sh (pareto x).
+  forall sh lst w, pareto (indentDoc w sh lst) = indentDoc w sh (pareto lst).
 Proof.
   intros sh lst w.
-  induction lst.
-  + auto.
-  + destruct (main_pred w sh a) eqn:E1.
-     rewrite -> linear_indent_true.
-     - destruct (is_less_exist a lst) eqn:E2.
-       * rewrite ->  linear_pareto_not_exist.
-        { rewrite -> IHlst.
-          rewrite -> linear_pareto_not_exist.
-          reflexivity. apply E2.
-        }
-        { rewrite linear_indent_op; auto.
-        }
-       * rewrite ->  linear_pareto_exist.
-         { rewrite -> IHlst.
-           rewrite ->  linear_pareto_exist.
-           rewrite -> linear_indent_true.
-           rewrite -> pareto_indent_elem.
-           auto. auto. auto. }
-         { rewrite -> linear_indent_op; auto.
-         }
-     - auto.
-     - rewrite -> linear_indent_false; auto.
-       *  rewrite -> IHlst.
-          destruct (is_less_exist a lst) eqn:E2.
-          { rewrite ->  linear_pareto_not_exist; auto. }
-          { rewrite linear_pareto_exist, linear_indent_false; auto.
-            set (lst' := pareto lst).
-            induction lst'; auto.
-            destruct (is_less_than a a0) eqn:E3.
-            { rewrite par_elem2_less; auto.
-              rewrite <- IHlst'.
-              rewrite linear_indent_false; auto.
-              rewrite (as_pred w sh a a0); auto.
-            }
-            { rewrite par_elem2_not_less; auto.
-              destruct (main_pred w sh a0) eqn:E4.
-              { rewrite -> linear_indent_true; auto.
-                rewrite -> linear_indent_true; auto.
-                rewrite IHlst'; auto.
-              }
-              { rewrite -> linear_indent_false; auto.
-                rewrite -> linear_indent_false; auto.
-              }
-            }
-         }
+  induction lst using rev_ind. auto.
+  destruct (main_pred w sh x) eqn:E1.
+  { rewrite linear_indent_true_e; auto.
+    { destruct (is_less_exist x lst) eqn:E2.
+      { rewrite linear_pareto_exist, IHlst, linear_pareto_exist; auto.
+        rewrite linear_indent_op; auto.
+      }
+      repeat rewrite linear_pareto_not_exist.
+      rewrite IHlst, linear_indent_true_e.
+      all: auto.
+      rewrite linear_indent_op.
+      all: auto.
+    }
+  }
+  rewrite linear_indent_false_e; auto.
+  rewrite IHlst.
+  destruct (is_less_exist x lst) eqn:E2.
+  { rewrite linear_pareto_exist; auto.
+  }
+  rewrite linear_pareto_not_exist, linear_indent_false_e; auto.
 Qed.
 
 Lemma pareto_indent : 
