@@ -141,16 +141,51 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma is_less_than_transitivity :
-  forall a b c, is_less_than a b = true /\ is_less_than b c = true ->
+Lemma nat_leb_trans a b c
+      (AB : PeanoNat.Nat.leb a b = true)
+      (BC : PeanoNat.Nat.leb b c = true) :
+  PeanoNat.Nat.leb a c = true.
+Proof.
+  (* Print PeanoNat.Nat.leb_spec0. *)
+  eapply elimT in AB; [|apply PeanoNat.Nat.leb_spec0].
+  eapply elimT in BC; [|apply PeanoNat.Nat.leb_spec0].
+  (* apply introT with (P := a <= c). *)
+  eapply introT.
+  { apply PeanoNat.Nat.leb_spec0. }
+  etransitivity; eauto.
+
+  (* assert (a <= c) as AC. *)
+  (* { etransitivity; eauto. } *)
+  (* apply (fun x => @introT (a <= c) _ x AC). *)
+  (* apply PeanoNat.Nat.leb_spec0. *)
+Qed.
+
+Ltac andb_split :=
+  repeat match goal with
+         | H : _ && _ = true |- _ => apply andb_true_iff in H; destruct H
+         end.
+
+Lemma is_less_than_transitivity a b c
+      (AB : is_less_than a b = true)
+      (BC : is_less_than b c = true) :
     is_less_than a c = true.
 Proof.
-  Admitted.
+  unfold is_less_than in *.
+  andb_split.
+  repeat (apply andb_true_iff; split).
+  all: eapply nat_leb_trans; eauto.
+Qed.
+
+(* Notation "lst += a" := (lst ++ (a::nil)) (at level 0). *)
+(* Locate "_ += _". *)
 
 Lemma is_less_than_reflexivity :
   forall a, is_less_than a a = true.
 Proof.
-  Admitted.
+  intros. unfold is_less_than.
+  (* SearchAbout PeanoNat.Nat.leb. *)
+  rewrite !PeanoNat.Nat.leb_refl. auto.
+Qed.
 
 Lemma is_less_exist_transitivity_1 :
   forall a b lst, is_less_than a b = true /\ is_less_exist a lst = true 
@@ -163,26 +198,26 @@ Proof.
   rewrite is_exist_cons_alt in B.
   destruct B as [C|C].
   { simpl. unfold flip.
-    rewrite C, (is_less_than_transitivity a0 a b); auto.
-  }
+    rewrite C, (is_less_than_transitivity a0 a b); auto. }
   simpl. rewrite IHlst, C; auto.
   repeat rewrite orb_true_r.
   reflexivity.
 Qed.
 
-Lemma is_less_exist_transitivity_2 :
-  forall a b lst, is_less_exist a lst = false /\ is_less_exist b lst = true 
-      -> is_less_than a b = true.
+Lemma is_less_exist_transitivity_2 a b lst
+      (LA : is_less_exist a lst = false)
+      (LB : is_less_exist b lst = true) :
+  is_less_than a b = true.
 Proof.
-  intros a b lst H.
-  destruct H as [A B].
-  rewrite <- B.
+  rewrite <- LB.
   symmetry.
-  induction lst. discriminate B.
+  induction lst. discriminate LB.
   destruct (is_less_than a b). auto.
   apply is_exist_not_cons_alt.
-  apply is_exist_not_cons_alt in A.
-  destruct A as [A1 A2].
+  apply is_exist_not_cons_alt in LA.
+  destruct LA as [LA1 LA2].
+  split.
+  2: { destruct (is_less_exist b lst) eqn:HH; auto. }
   (* discriminate IHlst *)
 Admitted.
 
@@ -249,8 +284,7 @@ Proof.
   destruct (is_less_than b a0) eqn:E4.
   { simpl.
     assert (L: is_less_than a a0 = true).
-    { apply (is_less_than_transitivity a b a0). auto.
-    }
+    { apply (is_less_than_transitivity a b a0); auto. }
     rewrite E3 in L. discriminate L.
   }
   simpl. rewrite eq_conv_is_less, E3.
@@ -304,15 +338,13 @@ Proof.
     rewrite <- (app_nil_l lst') at 3.
     rewrite app_comm_cons.
     rewrite app_assoc.
-    apply IHlst'.
-  }
+    apply IHlst'. }
   intro lst'.
   rewrite <- app_comm_cons.
   simpl.
   destruct (is_less_exist a lst') eqn:E1. apply IHlst.
   rewrite <- IHlst.
-  rewrite <- (app_nil_l (pareto_by_elem a lst')) at 1.
-  rewrite <- (app_nil_l (pareto_by_elem a lst')) at 2.
+  rewrite <- (app_nil_l (pareto_by_elem a lst')) at 1 2.
   rewrite <- app_assoc.
   generalize (nil : list t) at 1 3.
   induction lst'.
@@ -320,8 +352,7 @@ Proof.
     apply pareto_exec_exist.
     rewrite is_exist_cons_all.
     simpl. unfold flip.
-    rewrite is_less_than_reflexivity. auto.
-  }
+    rewrite is_less_than_reflexivity. auto. }
   intro l.
   rewrite is_exist_not_cons_alt in E1.
   destruct E1 as [A B].
@@ -332,25 +363,20 @@ Proof.
     apply is_exist_cons_all.
     rewrite is_exist_cons_all.
     simpl. unfold flip.
-    rewrite E2. auto.
-  }
+    rewrite E2. auto. }
   rewrite par_elem2_not_less; auto.
   rewrite <- app_comm_cons.
   repeat rewrite pareto_exec_exist.
-  rewrite <- (app_nil_l (pareto_by_elem a lst')) at 1.
-  rewrite <- (app_nil_l (pareto_by_elem a lst')) at 2.
+  2,3: rewrite is_exist_cons_all; simpl; unfold flip;
+    rewrite is_less_than_reflexivity; auto.
+  rewrite <- (app_nil_l (pareto_by_elem a lst')) at 1 2.
   rewrite <- app_assoc.
   assert (Rew: l ++ a0 :: nil ++ pareto_by_elem a lst' ++ a :: nil = 
-    (l ++ a0 :: nil) ++ pareto_by_elem a lst' ++ a :: nil).
-  { rewrite <- app_assoc.
-    auto.
-  }
+               (l ++ a0 :: nil) ++ pareto_by_elem a lst' ++ a :: nil).
+  { rewrite <- app_assoc. auto. }
   rewrite Rew.
   apply IHlst'; auto.
-  rewrite is_exist_cons_all.
-  simpl. unfold flip.
-  rewrite is_less_than_reflexivity. auto.
-Admitted.
+Qed.
 
 Lemma linear_pareto_exist :
   forall a lst, is_less_exist a lst = true -> pareto (lst += a) = pareto lst.
