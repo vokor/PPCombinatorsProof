@@ -194,8 +194,8 @@ Definition indent' shift f :=
   match f with
   | T h fw m lw to_text => T
     h
-    (shift + fw)
-    (shift + m)
-    (shift + lw)
-    (fun s t => append (sp shift) (to_text (shift + s) t))
+    (fw + shift)
+    (m + shift)
+    (lw + shift)
+    (fun s t => append (sp shift) (to_text (s + shift) t))
   end.
