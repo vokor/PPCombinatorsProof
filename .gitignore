@@ -7,3 +7,4 @@ Makefile.coq.conf
 *.vio
 *.v.d
 *.glob
+*.aux
