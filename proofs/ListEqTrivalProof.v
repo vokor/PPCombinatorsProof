@@ -1,3 +1,4 @@
+Require Import Hahn.
 Require Import Format.
 Require Import Doc.
 Require Import PrettyPrinter.
@@ -674,7 +675,7 @@ Lemma pareto_beside :
       = FormatList.besideDoc w (evaluatorList w a) (evaluatorList w b).
 Proof.
   intros a b w H.
-  red in H.
-  (* destruct H as [AA BB]. unnw. *)
-  unfold neighb_pareto in H.
+  red in H.  (* destruct H as [AA BB]. unnw. *)
+  unfold pareto.
 Admitted.
+  

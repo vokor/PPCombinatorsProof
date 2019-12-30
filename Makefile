@@ -1,5 +1,5 @@
 COQMODULE    := pp
-COQTHEORIES  := *.v
+COQTHEORIES  := hahn/*.v libs/*.v proofs/*.v
 
 .PHONY: all theories clean
 
