@@ -8,3 +8,6 @@ Makefile.coq.conf
 *.v.d
 *.glob
 *.aux
+
+.coqdeps.d
+*.v~

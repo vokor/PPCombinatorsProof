@@ -4,6 +4,8 @@ Require Import Doc.
 Require Import PrettyPrinter.
 Require Import FormatTrivial.
 Require Import FormatList.
+Require Import IsLess.
+
 Require Import String.
 Require Import ZArith Int.
 Require Import Coq.Program.Basics.
@@ -12,9 +14,10 @@ Require Import Coq.Init.Datatypes.
 Require Import Coq.Bool.Bool.
 Require Import Coq.ssr.ssrbool.
 
+
 Lemma listEqTrivialProof :
   forall x width,
-    (pretty evaluatorTrival width x) = (pretty evaluatorList width x).
+    (pretty evaluatorTrivial width x) = (pretty evaluatorList width x).
 Proof.
   intros x.
 Admitted.
@@ -26,176 +29,6 @@ Proof.
   intros x.
   unfold FormatTrivial.constructDoc.
   unfold FormatList.constructDoc.
-  reflexivity.
-Qed.
-
-Lemma eq_conv_is_less :
-  forall a b,
-    (compose negb (is_less_than a)) b = negb (is_less_than a b).
-Proof.
-  intros a b.
-  unfold compose.
-  reflexivity.
-Qed.
-
-Lemma pred_filter :
-  forall predicate a (lst: list t),
-    predicate a = true -> filter predicate (a::lst) = a :: (filter predicate lst).
-Proof.
-  intros P a lst H.
-  simpl. rewrite -> H. reflexivity.
-Qed.
-
-Lemma is_exist_not_cons_alt a h l  :
-  is_less_exist a (h :: l) = false <->
-  is_less_than h a = false /\ is_less_exist a l = false.
-Proof.
-  split.
-  { intro H.
-    simpl in H.
-    destruct (is_less_than h a) eqn:E1.
-    { destruct (is_less_exist a l) eqn:E2.
-      unfold flip in H. rewrite E1 in H.
-      discriminate H.
-      unfold flip in H. rewrite E1 in H.
-      discriminate H. }
-    destruct (is_less_exist a l) eqn:E2.
-    unfold flip in H. rewrite E1 in H.
-    discriminate H. auto. }
-  intro H.
-  destruct H as [A B].
-  simpl.
-  unfold flip. rewrite A, B.
-  auto.
-Qed.
-
-Lemma is_exist_not_cons_all a lst lst'  :
-  is_less_exist a (lst ++ lst') = false <->
-  is_less_exist a lst = false /\ is_less_exist a lst' = false.
-Proof.
-  split.
-  { intro H.
-    induction lst. auto.
-    simpl in H.
-    simpl.
-    destruct (flip is_less_than a a0) eqn:E1.
-    discriminate H. auto. }
-  intro H.
-  destruct H as [A B].
-  induction lst. auto.
-  simpl.
-  rewrite is_exist_not_cons_alt in A.
-  destruct A as [A1 A2].
-  rewrite IHlst; auto.
-  unfold flip. rewrite A1.
-  auto.
-Qed.
-
-Lemma is_exist_cons_alt a h l  :
-  is_less_exist a (h :: l) = true <->
-  is_less_than h a = true \/ is_less_exist a l = true.
-Proof.
-  split.
-  { intro H.
-    destruct (is_less_than h a) eqn:E1; auto.
-    destruct (is_less_exist a l) eqn:E2; auto.
-    simpl in H. unfold flip in H.
-    rewrite E1, E2 in H. discriminate H. }
-  intro H. destruct H as [A|A].
-  { simpl. unfold flip. rewrite A. auto. }
-  simpl. rewrite A. rewrite orbT.
-  reflexivity.
-Qed.
-
-Lemma is_exist_cons_all a lst lst'  :
-  is_less_exist a (lst ++ lst') = true <->
-  is_less_exist a lst = true \/ is_less_exist a lst' = true.
-Proof.
-  split.
-  { intro H.
-    induction lst. auto.
-    simpl in H.
-    simpl.
-    destruct (flip is_less_than a a0) eqn:E1. auto.
-    apply IHlst. simpl in H. apply H. }
-  intro H.
-  destruct H as [A|B].
-  { induction lst. auto.
-    simpl.
-    unfold flip.
-    rewrite is_exist_cons_alt in A.
-    destruct (is_less_than a0 a) eqn:E1. auto.
-    rewrite IHlst. auto.
-    destruct A as [A1|A2]. discriminate A1.
-    apply A2. }
-  induction lst. auto.
-  simpl.
-  unfold flip.
-  rewrite IHlst, orbT.
-  reflexivity.
-Qed.
-
-Lemma is_less_exist_with_elem :
-  forall a b lst, is_less_exist a lst = false ->
-    is_less_exist a (pareto_by_elem b lst) = false.
-Proof.
-  intros a b lst H.
-  induction lst. auto.
-  simpl.
-  rewrite eq_conv_is_less.
-  rewrite is_exist_not_cons_alt in H.
-  destruct H.
-  destruct (is_less_than b a0) eqn:E1; auto.
-  simpl. unfold flip.
-  rewrite H, IHlst; auto.
-Qed.
-
-Lemma nat_leb_trans a b c
-      (AB : a <=? b = true)
-      (BC : b <=? c = true) : a <=? c = true.
-Proof.
-  eapply elimT in AB; [|apply Nat.leb_spec0].
-  eapply elimT in BC; [|apply Nat.leb_spec0].
-  eapply introT.
-  { apply Nat.leb_spec0. }
-  etransitivity; eauto.
-Qed.
-
-Ltac andb_split :=
-  repeat match goal with
-         | H : _ && _ = true |- _ => apply andb_true_iff in H; destruct H
-         end.
-
-Lemma is_less_than_transitivity a b c
-      (AB : is_less_than a b = true)
-      (BC : is_less_than b c = true) :
-    is_less_than a c = true.
-Proof.
-  unfold is_less_than in *.
-  andb_split.
-  repeat (apply andb_true_iff; split).
-  all: eapply nat_leb_trans; eauto.
-Qed.
-
-Lemma is_less_than_reflexivity :
-  forall a, is_less_than a a = true.
-Proof.
-  intros. unfold is_less_than.
-  rewrite !PeanoNat.Nat.leb_refl. auto.
-Qed.
-
-Lemma is_less_exist_transitivity a b lst 
-    (A: is_less_than a b = true)
-    (B: is_less_exist a lst = true) : is_less_exist b lst = true.
-Proof.
-  rewrite <- B.
-  induction lst; auto.
-  rewrite is_exist_cons_alt in B.
-  destruct B as [C|C].
-  { simpl. unfold flip.
-    rewrite C, (is_less_than_transitivity a0 a b); auto. }
-  simpl. rewrite IHlst, C; auto.
-  repeat rewrite orb_true_r.
   reflexivity.
 Qed.
 
@@ -625,12 +458,12 @@ Proof.
 Qed.
 
 Lemma pareto_indent sh d w
-    (H: pareto (evaluatorTrival w d) = (evaluatorList w d)) :
-    pareto (indentDoc w sh (evaluatorTrival w d))
+    (H: pareto (evaluatorTrivial w d) = (evaluatorList w d)) :
+    pareto (indentDoc w sh (evaluatorTrivial w d))
         = indentDoc w sh (evaluatorList w d).
 Proof.
   rewrite <- H.
-  set (lst := evaluatorTrival w d).
+  set (lst := evaluatorTrivial w d).
   induction lst using rev_ind. auto.
   destruct (main_pred w sh x) eqn:E1.
   { rewrite linear_indent_true_e; auto.
@@ -665,17 +498,175 @@ Proof.
 Qed.
 
 Definition neighb_pareto (a: Doc) (b: Doc) (w: nat):=
-  pareto (evaluatorTrival w a) = (evaluatorList w a) /\
-  pareto (evaluatorTrival w b) = (evaluatorList w b).
+  pareto (evaluatorTrivial w a) = (evaluatorList w a) /\
+  pareto (evaluatorTrivial w b) = (evaluatorList w b).
 
-Lemma pareto_beside :
-  forall a b w,
-    neighb_pareto a b w ->
-    pareto (FormatTrivial.besideDoc w (evaluatorTrival w a) (evaluatorTrival w b)) 
+Lemma cross_general_exist_helper w f x y ys lst lst'
+      (H: is_less_exist x lst = true)
+      (F: func_correct f)
+      (T: (total_width (f x y) <=? w) = true) :
+  
+   is_less_exist (f x y)
+     (filter (fun f0 : t => total_width f0 <=? w)
+             (concat (map (fun f0 : t => map (f f0) (lst' ++ y :: ys)) lst))) = true.
+Proof.
+  induction lst. auto.
+  simpl.
+  rewrite map_app.
+  repeat rewrite filter_app.
+  repeat rewrite is_exist_cons_all.
+  simpl.
+  apply is_exist_cons_alt in H.
+  destruct H.
+  { destruct (total_width (f a y) <=? w) eqn:E1.
+    { rewrite is_exist_cons_alt.
+      rewrite <- F. auto. }    
+    rewrite (is_less_than_func _ _ x) in E1; auto. }
+  auto.
+Qed.
+
+Lemma trivial_cross_general_exist lst lst' x w f
+      (H: is_less_exist x lst = true)
+      (F: func_correct f) :
+ pareto (FormatTrivial.cross_general w f (lst ++ [x]) lst') =
+  pareto (FormatTrivial.cross_general w f lst lst').
+Proof.
+  unfold FormatTrivial.cross_general.
+  destruct lst as [| a lst].
+  { simpl in H. discriminate. }
+  assert (Lem: forall (q: list t) s t h, q ++ s ++ t ++ h = (q ++ s ++ t) ++ h).
+  { destruct q.
+    { simpl. apply app_assoc. }
+    simpl. ins. repeat rewrite app_assoc. reflexivity. }
+  apply is_exist_cons_alt in H.
+  simpl.
+  destruct H.
+  { rewrite map_app, concat_app.
+    generalize (concat (map (fun f0 : t => map (f f0) lst') lst)).
+    simpl.
+    generalize lst' as mas.
+    induction mas using rev_ind.
+    { simpl. ins. rewrite app_nil_r. reflexivity. }
+    rewrite app_nil_r.
+    repeat rewrite map_app.
+    simpl.
+    ins. rewrite Lem.
+    rewrite filter_app. simpl.
+    destruct (total_width (f x x0) <=? w) eqn:E1.
+    { rewrite linear_pareto_exist.
+      { repeat rewrite <- app_assoc.
+        generalize (f a x0 :: nil).
+        ins.
+        assert (R : map (f a) mas ++ l0 ++ l ++ map (f x) mas =
+                    map (f a) mas ++ (l0 ++ l) ++ map (f x) mas).
+        { generalize (map (f a) mas).
+          ins. destruct l1.
+          { simpl. apply app_assoc. }
+          simpl. repeat rewrite app_assoc. reflexivity. }
+        rewrite R.
+        generalize (l0 ++ l).
+        rewrite app_nil_r in IHmas.
+        apply IHmas. }
+      generalize (map (f x) mas).
+      generalize mas.
+      ins.
+      induction mas0.
+      { simpl.
+        rewrite (is_less_than_func f a x x0 w); auto.
+        apply  is_exist_cons_alt.
+        unfold func_correct in F.
+        rewrite <- F.
+        auto. }
+      simpl.
+      destruct (total_width (f a a0) <=? w) eqn:E2.
+      { apply is_exist_cons_alt.
+        rewrite IHmas0.
+        auto. }
+      apply IHmas0. }
+    rewrite app_nil_r.
+    repeat rewrite filter_app.
+    generalize mas.
+    generalize (filter (fun f0 : t => total_width f0 <=? w) (f a x0 :: nil)).
+    generalize (filter (fun f0 : t => total_width f0 <=? w) l).
+    ins.
+    rewrite <- (app_nil_r (map (f a) mas0)).
+    generalize (nil: list t).
+    induction mas0 using rev_ind.
+    { simpl. rewrite app_nil_r. reflexivity. }
+    repeat rewrite map_app. simpl.
+    rewrite (filter_app _  (map (f x) mas0)).
+    simpl.
+    ins.
+    rewrite <- (app_assoc _ _ l2).
+    destruct (total_width (f x x1) <=? w) eqn:E2.
+    { rewrite Lem, linear_pareto_exist.
+      { apply IHmas0. }
+      repeat rewrite filter_app.
+      repeat rewrite is_exist_cons_all.
+      simpl.
+      rewrite (is_less_than_func f a x x1 w); auto.
+      rewrite is_exist_cons_alt.
+      rewrite <- F. rewrite H. simpl.
+      repeat rewrite or_assoc. auto. }
+    rewrite app_nil_r.
+    apply IHmas0. }
+  rewrite map_app, concat_app. simpl.
+  rewrite app_nil_r.
+  generalize (map (f a) lst').
+  ins. (* TODO: check this, it (Rew) can be done simplier *)
+  assert (Rew: forall lst1 lst2, concat (map (fun f0 : t => map (f f0) lst1) lst2) =
+         concat (map (fun f0 : t => map (f f0) (lst1 ++ (nil: list t))) lst2)).
+  { ins. rewrite app_nil_r. reflexivity. }
+  rewrite Rew.
+  generalize (nil: list t).
+  induction lst' using rev_ind.
+  { ins. rewrite app_nil_r.
+    reflexivity. }
+  ins.
+  repeat rewrite map_app.
+  simpl.
+  repeat rewrite app_assoc.
+  rewrite filter_app. simpl.
+  assert (Rew2 : concat (map (fun f0 : t => map (f f0) ((lst' ++ [x0]) ++ l0)) lst) =
+                   concat (map (fun f0 : t => map (f f0) (lst' ++ ((x0::nil) ++ l0))) lst)).
+    { simpl.
+      generalize lst as mas.        
+      destruct mas; auto. simpl.
+      rewrite <- app_assoc. simpl. reflexivity. }
+  rewrite Rew2. simpl.  
+  destruct (total_width (f x x0) <=? w) eqn:E1.
+  { rewrite linear_pareto_exist.
+    { rewrite <- app_assoc.
+      apply IHlst'. }
+    repeat rewrite filter_app.
+    repeat rewrite is_exist_cons_all.
+    rewrite  cross_general_exist_helper; auto. }
+  rewrite <- app_assoc.
+  rewrite app_nil_r.
+  apply IHlst'.
+Qed.
+
+Lemma pareto_beside a b w
+      (H: neighb_pareto a b w) :
+  pareto (FormatTrivial.besideDoc w (evaluatorTrivial w a) (evaluatorTrivial w b)) 
       = FormatList.besideDoc w (evaluatorList w a) (evaluatorList w b).
 Proof.
-  intros a b w H.
-  red in H.  (* destruct H as [AA BB]. unnw. *)
-  unfold pareto.
+  red in H. destruct H.
+  rewrite <- H. rewrite <- H0.
+  set (lst := evaluatorTrivial w a).
+  set (lst' := evaluatorTrivial w b).
+  induction lst using rev_ind.
+  { unfold pareto at 1.  unfold FormatTrivial.besideDoc. simpl.
+    unfold pareto at 1. simpl.
+    unfold besideDoc, cross_general, add_general. unfold map_filter. simpl.
+    generalize (pareto lst').
+    induction l. auto.
+    simpl. apply IHl. }
+  destruct (is_less_exist x lst) eqn:E1.
+  { unfold FormatTrivial.besideDoc.
+    rewrite linear_pareto_exist, trivial_cross_general_exist; auto. }
+  rewrite linear_pareto_not_exist; auto.
+    
+
 Admitted.
   

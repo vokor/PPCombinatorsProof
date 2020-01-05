@@ -32,12 +32,12 @@ Definition fillDoc (width: nat) (fs1: list t) (fs2: list t) (shift: nat) :=
 Definition choiceDoc (fs1: list t) (fs2: list t) := 
     fs1 ++ fs2.
 
-Fixpoint evaluatorTrival (width: nat) (doc: Doc): list t:=
+Fixpoint evaluatorTrivial (width: nat) (doc: Doc): list t:=
   match doc with
   | Text s     => constructDoc s
-  | Indent n d => indentDoc width n (evaluatorTrival width d)
-  | Beside a b => besideDoc width (evaluatorTrival width a) (evaluatorTrival width b)
-  | Above a b  => aboveDoc width (evaluatorTrival width a) (evaluatorTrival width b)
-  | Choice a b => choiceDoc (evaluatorTrival width a) (evaluatorTrival width b)
-  | Fill a b n => fillDoc width (evaluatorTrival width a) (evaluatorTrival width b) n
+  | Indent n d => indentDoc width n (evaluatorTrivial width d)
+  | Beside a b => besideDoc width (evaluatorTrivial width a) (evaluatorTrivial width b)
+  | Above a b  => aboveDoc width (evaluatorTrivial width a) (evaluatorTrivial width b)
+  | Choice a b => choiceDoc (evaluatorTrivial width a) (evaluatorTrivial width b)
+  | Fill a b n => fillDoc width (evaluatorTrivial width a) (evaluatorTrivial width b) n
   end.
