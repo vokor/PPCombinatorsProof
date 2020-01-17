@@ -5,6 +5,7 @@ Require Import PrettyPrinter.
 Require Import FormatTrivial.
 Require Import FormatList.
 Require Import IsLess.
+Require Import FuncCorrect.
 
 Require Import String.
 Require Import ZArith Int.
@@ -525,6 +526,15 @@ Proof.
   auto.
 Qed.
 
+Lemma trivial_cross_general_not_exist lst lst' x w f
+      (H: is_less_exist x lst = false)
+      (F: func_correct f) :
+ pareto (FormatTrivial.cross_general w f (lst ++ [x]) lst') =
+ pareto (FormatTrivial.cross_general w f lst lst') ++ [x].
+Proof.
+ 
+Admitted.
+
 Lemma trivial_cross_general_exist lst lst' x w f
       (H: is_less_exist x lst = true)
       (F: func_correct f) :
@@ -646,6 +656,19 @@ Proof.
   apply IHlst'.
 Qed.
 
+Lemma remove_pareto lst lst' f w
+      (F: func_correct f) :
+  cross_general f w (pareto lst) (pareto lst') =
+  cross_general f w lst lst'.
+Proof.
+Admitted.
+
+Lemma cross_general_eq w f lst1 lst2 :
+  pareto (FormatTrivial.cross_general w f lst1 lst2) =
+  FormatList.cross_general f w lst1 lst2.
+Proof.
+Admitted.
+  
 Lemma pareto_beside a b w
       (H: neighb_pareto a b w) :
   pareto (FormatTrivial.besideDoc w (evaluatorTrivial w a) (evaluatorTrivial w b)) 
@@ -654,19 +677,81 @@ Proof.
   red in H. destruct H.
   rewrite <- H. rewrite <- H0.
   set (lst := evaluatorTrivial w a).
-  set (lst' := evaluatorTrivial w b).
+  set (arr := evaluatorTrivial w b).
+  unfold besideDoc.
+  rewrite remove_pareto.
+  { unfold FormatTrivial.besideDoc.
+    apply cross_general_eq. }
+  apply beside_correct.
+Qed.
+
+Lemma pareto_above a b w
+      (H: neighb_pareto a b w) :
+  pareto (FormatTrivial.aboveDoc w (evaluatorTrivial w a) (evaluatorTrivial w b)) 
+      = FormatList.aboveDoc w (evaluatorList w a) (evaluatorList w b).
+Proof.
+  red in H. destruct H.
+  rewrite <- H. rewrite <- H0.
+  set (lst := evaluatorTrivial w a).
+  set (arr := evaluatorTrivial w b).
+  unfold aboveDoc.
+  rewrite remove_pareto.
+  { unfold FormatTrivial.aboveDoc.
+    apply cross_general_eq. }
+  apply above_correct.
+Qed.
+
+Lemma pareto_fill a b w n
+      (H: neighb_pareto a b w) :
+  pareto (FormatTrivial.fillDoc w (evaluatorTrivial w a) (evaluatorTrivial w b) n) 
+      = FormatList.fillDoc w (evaluatorList w a) (evaluatorList w b) n.
+  red in H. destruct H.
+  rewrite <- H. rewrite <- H0.
+  set (lst := evaluatorTrivial w a).
+  set (arr := evaluatorTrivial w b).
+  unfold fillDoc.
+  rewrite remove_pareto.
+  { unfold FormatTrivial.fillDoc.
+    apply cross_general_eq. }
+  apply fill_correct.
+Qed.
+
+  (*
+  unfold FormatTrivial.besideDoc. unfold FormatTrivial.cross_general.
+  unfold add_general.
+  
+  generalize arr.
   induction lst using rev_ind.
-  { unfold pareto at 1.  unfold FormatTrivial.besideDoc. simpl.
+  { intro lst'.
+    unfold pareto at 1.  unfold FormatTrivial.besideDoc. simpl.
     unfold pareto at 1. simpl.
     unfold besideDoc, cross_general, add_general. unfold map_filter. simpl.
-    generalize (pareto lst').
+    generalize (pareto lst'). ins.
     induction l. auto.
     simpl. apply IHl. }
+  intro lst'.
+  unfold FormatTrivial.besideDoc.
   destruct (is_less_exist x lst) eqn:E1.
-  { unfold FormatTrivial.besideDoc.
-    rewrite linear_pareto_exist, trivial_cross_general_exist; auto. }
+  { rewrite linear_pareto_exist, trivial_cross_general_exist; auto. apply IHlst.
+    apply beside_correct. }
   rewrite linear_pareto_not_exist; auto.
-    
-
-Admitted.
+  generalize E1.
+  generalize lst as mas.
+  generalize lst' as mas'.
+  intro mas'.
+  induction mas'.
+  { ins.
+    unfold besideDoc, cross_general. simpl.
+    unfold FormatTrivial.cross_general. simpl.
+    assert (IsNil: concat (map (fun _ : t => nil) (mas ++ [x])) = (nil: list t)).
+    { generalize mas. ins.
+      induction mas0. auto.
+      simpl. auto. }
+    rewrite IsNil. auto. }
+  intros mas E.
   
+  
+   pareto (FormatTrivial.cross_general w add_beside (lst ++ [x]) lst') =
+  besideDoc w (pareto (lst ++ [x])) (pareto lst')
+Admitted.
+  *)
