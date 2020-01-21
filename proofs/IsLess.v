@@ -113,19 +113,37 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma is_less_exist_with_elem :
-  forall a b lst, is_less_exist a lst = false ->
-    is_less_exist a (pareto_by_elem b lst) = false.
+Notation "lst ++ [ a ]" := (lst ++ (a::nil)) (at level 60).
+
+Lemma is_less_than_bef_aft x b lst :
+  is_less_exist x (lst ++ [b]) = is_less_exist x (b::lst).
 Proof.
-  intros a b lst H.
-  induction lst. auto.
-  simpl.
-  rewrite eq_conv_is_less.
-  rewrite is_exist_not_cons_alt in H.
-  destruct H.
-  destruct (is_less_than b a0) eqn:E1; auto.
-  simpl. unfold flip.
-  rewrite H, IHlst; auto.
+  destruct (is_less_exist x (b::lst)) eqn:E1.
+  { rewrite is_exist_cons_alt in E1.
+    destruct E1 as [A|A].
+    { induction lst.
+      { simpl. unfold flip.
+        rewrite A. auto. }
+      simpl. rewrite IHlst.
+      apply orb_true_r. }
+    induction lst.
+    { simpl in A. discriminate A. }
+    rewrite is_exist_cons_alt in A.
+    rewrite <- app_comm_cons.
+    rewrite is_exist_cons_alt.
+    destruct A.
+    all: auto. }
+  rewrite is_exist_not_cons_alt in E1.
+  destruct E1 as [A B].
+  induction lst.
+  { simpl. unfold flip.
+    rewrite A. auto. }
+  rewrite <- app_comm_cons.
+  rewrite is_exist_not_cons_alt.
+  auto.
+  rewrite is_exist_not_cons_alt in B.
+  destruct B as [B C].
+  auto.
 Qed.
 
 Lemma nat_leb_trans a b c
@@ -162,7 +180,7 @@ Proof.
   rewrite !PeanoNat.Nat.leb_refl. auto.
 Qed.
 
-Lemma is_less_exist_transitivity a b lst 
+Lemma is_less_exist_cont_true a b lst 
     (A: is_less_than a b = true)
     (B: is_less_exist a lst = true) : is_less_exist b lst = true.
 Proof.
