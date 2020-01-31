@@ -194,10 +194,21 @@ Qed.
 
 Lemma is_less_exist_pareto_elem a b lst 
     (A: is_less_than a b = false)
-    (B: is_less_than b a = false)
     (C: is_less_exist b lst = true) : is_less_exist b (pareto_by_elem a lst) = true.
 Proof.
-Admitted.
+  induction lst. auto.
+  rewrite is_exist_cons_alt in C.
+  destruct C.
+  { destruct (is_less_than a a0) eqn:E1.
+    { rewrite (is_less_than_transitivity a a0 b) in A; auto. }
+    rewrite par_elem2_not_less; auto.
+    rewrite is_exist_cons_alt; auto. }
+  destruct (is_less_than a a0) eqn:E1.
+  { rewrite par_elem2_less; auto. }
+  rewrite par_elem2_not_less; auto.
+  rewrite is_exist_cons_alt.
+  auto.
+Qed.
 
 Lemma pareto_exec_exist a lst l r
     (H: is_less_exist a lst = true) :
@@ -343,6 +354,30 @@ Proof.
   apply Gen. auto.
 Qed.
 
+Lemma pareto_ins_elem_exist a l r
+      (H: is_less_exist a l = true) :
+  pareto (l ++ a::r) = pareto (l ++ r).
+Proof.
+  unfold pareto.
+  generalize dependent (nil:list t).
+  induction l.
+  { simpl in H.
+    discriminate H. }
+  intro lst.
+  simpl.
+  rewrite is_exist_cons_alt in H.
+  destruct H.
+  {  destruct (is_less_exist a0 lst) eqn:E1.
+    { apply pareto_exec_exist.
+      apply (is_less_exist_cont_true a0); auto. }
+    apply pareto_exec_exist.
+    rewrite is_exist_cons_all.
+    simpl. unfold flip.
+    rewrite H.
+    auto. }
+  destruct (is_less_exist a0 lst) eqn:E1; auto.
+Qed.
+  
 Lemma pareto_nil : pareto nil = nil.
 Proof.
   unfold pareto.
@@ -376,7 +411,40 @@ Proof.
   rewrite H.
   reflexivity.
 Qed.
-  
+
+Lemma pareto_by_elem_pareto_swap lst x :
+  pareto_by_elem x (pareto lst) = pareto (pareto_by_elem x lst).
+Proof.
+  induction lst using rev_ind. auto.
+  destruct (is_less_exist x0 lst) eqn:E1.
+  { rewrite linear_pareto_exist; auto.
+    rewrite pareto_by_elem_linear.
+    simpl. rewrite eq_conv_is_less.
+    destruct (is_less_than x x0) eqn:E2.
+    { simpl. rewrite app_nil_r.
+      apply IHlst. }
+    simpl.
+    destruct (is_less_exist x0 (pareto_by_elem x lst)) eqn:E3.
+    { rewrite linear_pareto_exist; auto. }
+    apply pareto_by_elem_not_nil in E3.
+    destruct E3.
+    { rewrite linear_pareto_exist; auto.
+      apply is_less_exist_pareto_elem; auto. }
+    rewrite H in E1.
+    discriminate E1. }
+  rewrite linear_pareto_not_exist; auto.
+  destruct (is_less_than x x0) eqn:E2.
+  { repeat rewrite par_elem2_less_rev; auto.
+    rewrite <- pareto_by_elem_remove; auto. }
+  repeat rewrite par_elem2_not_less_rev; auto.
+  rewrite linear_pareto_not_exist.
+  { apply app_inv_all.
+    rewrite pareto_by_elem_swap.
+    rewrite IHlst.
+    reflexivity. }
+  apply is_less_exist_with_elem; auto.
+Qed.
+
 Lemma pareto_by_elem_ins x lst
       (H: is_less_exist x lst = false) :
   pareto (pareto_by_elem x lst ++ [x]) =
@@ -423,22 +491,118 @@ Proof.
   auto.  
 Qed.
 
-Lemma pareto_linear lst lst' :
-  pareto (lst ++ lst') = pareto ((pareto lst) ++ (pareto lst')).
+Lemma pareto_rem_pareto_by_elem x lst' :
+  forall lst, is_less_exist x lst = true ->
+  pareto (lst ++ pareto_by_elem x lst') = pareto (lst ++ lst').
 Proof.
+  induction lst'; auto.
+  intros.
+  destruct (is_less_than x a) eqn:E1.
+  { rewrite par_elem2_less; auto.
+    rewrite pareto_ins_elem_exist; auto.
+    apply (is_less_exist_cont_true x a); auto. }
+  rewrite par_elem2_not_less; auto.
+  assert (lem : lst ++ a::lst' = (lst ++ [a]) ++ lst').
+  { rewrite <- app_assoc.
+    auto. }
+  rewrite lem.
+  rewrite <- IHlst'.
+  { rewrite <- app_assoc.
+    auto. }
+  apply is_exist_cons_all.
+  auto.
+Qed.  
+ 
+Lemma pareto_linear_fst lst :
+  forall lst', pareto (lst ++ lst') = pareto (pareto lst ++ lst').
+Proof.
+  induction lst using rev_ind; auto.
+  ins.
+  rewrite <- app_assoc.
+  simpl.
+  destruct (is_less_exist x lst) eqn:E1.
+  { rewrite linear_pareto_exist.
+    rewrite pareto_ins_elem_exist.
+    all: auto. }
+  rewrite linear_pareto_not_exist; auto.
+  rewrite <- app_assoc.
+  simpl.
+  rewrite IHlst. 
+  set (l := pareto lst).
+  assert (lem : is_less_exist x l = false).
+  { unfold l.
+    apply pareto_inside; auto. }
+  induction lst' using rev_ind.
+  { repeat rewrite linear_pareto_not_exist; auto.
+    { repeat rewrite pareto_by_elem_pareto_swap.
+      rewrite <- pareto_by_elem_remove; auto.
+      apply is_less_than_reflexivity. }
+    apply is_less_exist_with_elem; auto.
+  }
+  assert (rew: forall mas, mas ++ x::lst' ++ [x0] = (mas ++ x::lst') ++ [x0]).
+  { ins.
+    rewrite <- app_assoc.
+    auto. }
+  repeat rewrite rew.
+  destruct (is_less_exist x0 (l ++ x::lst')) eqn:E2.
+  { repeat rewrite linear_pareto_exist; auto.
+    apply is_exist_cons_all.
+    apply is_exist_cons_all in E2.
+    destruct (is_less_exist x0 (x :: lst')) eqn:E3; auto.
+    apply is_exist_not_cons_alt in E3.
+    destruct E3.
+    rewrite is_less_exist_pareto_elem; auto.
+    destruct E2; auto. }
+  repeat rewrite linear_pareto_not_exist; auto.
+  { rewrite IHlst'.
+    reflexivity. }
+  apply is_exist_not_cons_all.
+  apply is_exist_not_cons_all in E2.
+  rewrite is_exist_not_cons_alt in *.
+  destruct E2.
+  rewrite is_less_exist_with_elem.
+  all: auto.
+Qed.
+  
+Lemma pareto_linear lst lst' :
+  pareto (lst ++ lst') = pareto (pareto lst ++ pareto lst').
+Proof.
+  rewrite pareto_linear_fst.
+  generalize (pareto lst) as mas.
+  intro mas.
   induction lst' using rev_ind.
   { rewrite pareto_nil.
-    repeat rewrite app_nil_r.
-    induction lst using rev_ind. auto.
-    destruct (is_less_exist x lst) eqn:E1.
-    { rewrite linear_pareto_exist; auto. }
-    rewrite linear_pareto_not_exist; auto.
-    rewrite pareto_by_elem_ins.
-    { rewrite <- IHlst.
-      reflexivity. }
-    apply pareto_inside. auto. }
-  
-Admitted.
+    reflexivity. }
+  destruct (is_less_exist x lst') eqn:E1.
+  { rewrite linear_pareto_exist; auto.
+    rewrite app_assoc, pareto_ins_elem_exist.
+    { rewrite app_nil_r.
+      apply IHlst'. }
+    apply is_exist_cons_all.
+    auto. }
+  rewrite linear_pareto_not_exist; auto.
+  repeat rewrite app_assoc.
+  destruct (is_less_exist x mas) eqn:E2.
+  { repeat rewrite linear_pareto_exist.
+    { rewrite pareto_rem_pareto_by_elem; auto. }
+    { apply is_exist_cons_all.
+      auto. }
+    apply is_exist_cons_all.
+    auto. }
+  repeat rewrite linear_pareto_not_exist.
+  { apply app_inv_all.
+    rewrite IHlst'.
+    rewrite pareto_by_elem_pareto_swap.
+    rewrite pareto_by_elem_pareto_swap.
+    repeat rewrite pareto_by_elem_linear.
+    rewrite <- pareto_by_elem_remove; auto.
+    apply is_less_than_reflexivity. }
+  { apply is_exist_not_cons_all.
+    rewrite is_less_exist_with_elem; auto.
+    apply pareto_inside; auto. }
+  apply is_exist_not_cons_all.
+  auto.
+Qed.
   
 Lemma leb_le_eq_true x y z :
   x <= z <-> (x + y <=? z + y) = true.
@@ -694,8 +858,9 @@ Proof.
   destruct H.
   { destruct (total_width (f a y) <=? w) eqn:E1.
     { rewrite is_exist_cons_alt.
-      rewrite <- F. auto. }    
-    rewrite (is_less_than_func _ _ x) in E1; auto. }
+      red in F. desf.
+      rewrite <- F1. auto. }    
+    rewrite (is_less_than_func_t_l _ _ x) in E1; auto. }
   auto.
 Qed.
 
@@ -829,8 +994,18 @@ Proof.
   rewrite app_nil_r.
   apply IHlst'.
 Qed.
-*)
 
+Lemma map_func_nil lst (f: t -> list t)
+  (F: forall a, f a = nil) : concat (map f lst) = nil.
+Proof.
+  induction lst. auto.
+  ins.
+  rewrite F, IHlst.
+  apply app_nil_l.
+Qed.
+
+*)
+ 
 Lemma pareto_add_general lst a f w
       (F: func_correct f) :
   pareto (add_general f w (pareto lst) a) =
@@ -853,6 +1028,20 @@ Proof.
   auto.
 Qed.  
 
+Lemma pareto_list_remove lst lst' :
+  forallb (fun x => is_less_exist x lst) lst' = true ->
+            pareto (lst ++ lst') = pareto lst.
+Proof.
+  ins.
+  induction lst'.
+  { rewrite app_nil_r.
+    reflexivity. }
+  simpl in H.
+  apply andb_prop in H.
+  destruct H as [A B].
+  rewrite pareto_ins_elem_exist; auto.
+Qed.
+
 Lemma remove_pareto lst lst' f w
       (F: func_correct f) :
   cross_general f w (pareto lst) (pareto lst') =
@@ -860,8 +1049,56 @@ Lemma remove_pareto lst lst' f w
 Proof.
   rewrite remove_pareto_fst; auto.
   unfold cross_general.
-  induction lst.
-  { admit. }
+  induction lst' using rev_ind; auto.
+  destruct (is_less_exist x lst') eqn:E1.
+  { rewrite linear_pareto_exist; auto.
+    rewrite map_app.
+    simpl.
+    rewrite IHlst'. (* I don't need induction here *)    
+    induction lst' using rev_ind.
+    { simpl in E1.
+      discriminate E1. }
+    rewrite map_app. simpl.
+    repeat rewrite concat_app.
+    simpl.
+    repeat rewrite app_nil_r.
+    symmetry.
+    rewrite pareto_list_remove; auto.
+    generalize E1.
+    generalize lst.
+    generalize lst'.
+    intros mas' mas.
+    induction mas'.
+    { simpl.
+      unfold flip.
+      rewrite orb_false_r.
+      ins.
+      unfold add_general, map_filter.
+      set (l := nil) at 1.
+      set (r := nil).
+      assert (Lem : forallb_two l r = true); auto.
+      generalize dependent r.
+      generalize dependent l.
+      induction mas.
+      { ins.
+        (*
+        induction l; auto.
+        simpl. unfold flip.
+        rewrite is_less_than_reflexivity.
+        simpl. *)
+        admit. }
+      ins.
+      destruct (total_width (f a x) <=? w) eqn:E2.
+      { rewrite (is_less_than_func_t_r f x0 x); auto.
+        apply IHmas.
+        simpl.
+        red in F. desf.
+        rewrite <- F2.
+        rewrite E0. auto. }
+      destruct (total_width (f a x0) <=? w) eqn:E3.
+      { (* PROBLEMS *)    
+    admit.
+    
 Admitted.
 
 Lemma cross_general_eq w f lst1 lst2 :
@@ -916,43 +1153,3 @@ Lemma pareto_fill a b w n
     apply cross_general_eq. }
   apply fill_correct.
 Qed.
-
-  (*
-  unfold FormatTrivial.besideDoc. unfold FormatTrivial.cross_general.
-  unfold add_general.
-  
-  generalize arr.
-  induction lst using rev_ind.
-  { intro lst'.
-    unfold pareto at 1.  unfold FormatTrivial.besideDoc. simpl.
-    unfold pareto at 1. simpl.
-    unfold besideDoc, cross_general, add_general. unfold map_filter. simpl.
-    generalize (pareto lst'). ins.
-    induction l. auto.
-    simpl. apply IHl. }
-  intro lst'.
-  unfold FormatTrivial.besideDoc.
-  destruct (is_less_exist x lst) eqn:E1.
-  { rewrite linear_pareto_exist, trivial_cross_general_exist; auto. apply IHlst.
-    apply beside_correct. }
-  rewrite linear_pareto_not_exist; auto.
-  generalize E1.
-  generalize lst as mas.
-  generalize lst' as mas'.
-  intro mas'.
-  induction mas'.
-  { ins.
-    unfold besideDoc, cross_general. simpl.
-    unfold FormatTrivial.cross_general. simpl.
-    assert (IsNil: concat (map (fun _ : t => nil) (mas ++ [x])) = (nil: list t)).
-    { generalize mas. ins.
-      induction mas0. auto.
-      simpl. auto. }
-    rewrite IsNil. auto. }
-  intros mas E.
-  
-  
-   pareto (FormatTrivial.cross_general w add_beside (lst ++ [x]) lst') =
-  besideDoc w (pareto (lst ++ [x])) (pareto lst')
-Admitted.
-  *)

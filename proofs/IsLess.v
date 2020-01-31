@@ -6,6 +6,7 @@ Require Import Coq.Lists.List.
 Require Import Coq.ssr.ssrbool.
 Require Import ZArith Int.
 Require Import Coq.Bool.Bool.
+Require Import Hahn.
 
 Lemma eq_conv_is_less :
   forall a b,
@@ -195,14 +196,63 @@ Proof.
   reflexivity.
 Qed.
 
-Definition func_correct (f: t -> t -> t) :=
+Lemma is_less_exist_cont_false a b lst
+   (A: is_less_than a b = true)
+   (B: is_less_exist b lst = false) : is_less_exist a lst = false.
+Proof.
+  induction lst. auto.
+  rewrite is_exist_not_cons_alt in *.
+  destruct B.
+  destruct (is_less_than a0 a) eqn:E1; auto.
+  rewrite (is_less_than_transitivity a0 a b) in H; auto.
+Qed.
+
+Fixpoint forallb_two (lst: list t) (lst': list t) : bool :=
+  match lst, lst' with
+  | nil, nil       => true
+  | (x::xs), (y::ys) => (is_less_than x y) && forallb_two xs ys
+  | _,_            => false
+  end.
+
+Definition func_correct1 (f: t -> t -> t) :=
   forall u v w, is_less_than u v = is_less_than (f u w) (f v w).
 
-Lemma is_less_than_func f a b x w
+Definition func_correct2 (f: t -> t -> t) :=
+  forall u v w, is_less_than u v = is_less_than (f w u) (f w v).
+
+Definition func_correct (f: t -> t -> t) :=
+  << F1: func_correct1 f >> /\
+  << F2: func_correct2 f >>.
+
+Lemma is_less_than_func_t_l f a b x w
       (F: func_correct f)
       (H: is_less_than a b = true)
       (P: (total_width (f b x) <=? w) = true) :
   (total_width (f a x) <=? w) = true.
+Proof.
+  red in F.
+  desf.
 Admitted.
   
-      
+Lemma is_less_than_func_t_r f a b x w
+      (F: func_correct f)
+      (H: is_less_than a b = true)
+      (P: (total_width (f x b) <=? w) = true) :
+  (total_width (f x a) <=? w) = true.
+Admitted.
+
+Lemma is_less_than_func_f_r f a b x w
+      (F: func_correct f)
+      (H: is_less_than a b = true)
+      (P: (total_width (f x a) <=? w) = false) :
+  (total_width (f x b) <=? w) = false.
+Admitted.
+
+Lemma is_less_than_func_f_l f a b x w
+      (F: func_correct f)
+      (H: is_less_than a b = true)
+      (P: (total_width (f a x) <=? w) = false) :
+  (total_width (f b x) <=? w) = false.
+Admitted.
+
+
