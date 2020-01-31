@@ -1,4 +1,4 @@
-Require Import Hahn.
+From hahn Require Import Hahn.
 Require Import Format.
 Require Import Doc.
 Require Import PrettyPrinter.
@@ -1055,18 +1055,16 @@ Proof.
     rewrite map_app.
     simpl.
     rewrite IHlst'. (* I don't need induction here *)    
-    induction lst' using rev_ind.
+    induction lst' as [|x0 lst' _] using rev_ind.
     { simpl in E1.
       discriminate E1. }
     rewrite map_app. simpl.
     repeat rewrite concat_app.
     simpl.
     repeat rewrite app_nil_r.
-    symmetry.
-    rewrite pareto_list_remove; auto.
-    generalize E1.
-    generalize lst.
-    generalize lst'.
+    rewrite pareto_list_remove with
+        (lst:= concat (map (add_general f w lst) lst') ++ add_general f w lst x0); auto.
+    generalize E1, lst, lst'.
     intros mas' mas.
     induction mas'.
     { simpl.
@@ -1077,8 +1075,7 @@ Proof.
       set (l := nil) at 1.
       set (r := nil).
       assert (Lem : forallb_two l r = true); auto.
-      generalize dependent r.
-      generalize dependent l.
+      generalize dependent r, l.
       induction mas.
       { ins.
         (*

@@ -1,3 +1,4 @@
+From hahn Require Import Hahn.
 Require Import FormatTrivial.
 Require Import FormatList.
 Require Import Format.
@@ -6,7 +7,6 @@ Require Import Coq.Lists.List.
 Require Import Coq.ssr.ssrbool.
 Require Import ZArith Int.
 Require Import Coq.Bool.Bool.
-Require Import Hahn.
 
 Lemma eq_conv_is_less :
   forall a b,
