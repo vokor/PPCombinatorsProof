@@ -207,13 +207,118 @@ Proof.
   rewrite (is_less_than_transitivity a0 a b) in H; auto.
 Qed.
 
-Fixpoint forallb_two (lst: list t) (lst': list t) : bool :=
-  match lst, lst' with
-  | nil, nil       => true
-  | (x::xs), (y::ys) => (is_less_than x y) && forallb_two xs ys
-  | _,_            => false
+Lemma is_less_exist_destruct x lst lst' :
+  is_less_exist x (lst ++ lst') = is_less_exist x lst || is_less_exist x lst'.
+Proof.
+  induction lst; auto.
+  simpl.
+  rewrite IHlst.
+  apply orb_assoc.
+Qed.  
+
+Fixpoint forallb_exist (lst: list t) (lst': list t) : bool :=
+  match lst' with
+  | nil       => true
+  | x::xs   => (is_less_exist x lst) && forallb_exist lst xs
   end.
 
+Fixpoint forallb_not_exist (lst: list t) (lst': list t) : bool :=
+  match lst' with
+  | nil     => true
+  | x::xs   => negb (is_less_exist x lst) && forallb_not_exist lst xs
+  end.
+
+Lemma forallb_exist_nil :
+  forall a lst, forallb_exist nil (lst ++ [a]) = false.
+Proof.
+  ins.
+  induction lst; auto.
+Qed.  
+
+Lemma forallb_exist_correct a lst lst'
+      (H: forallb_exist lst lst' = true) : forallb_exist (a::lst) lst' = true.
+Proof.
+  induction lst'; auto.
+  simpl in H.
+  simpl.
+  unfold flip.
+  apply andb_prop in H.
+  destruct H.
+  rewrite H, IHlst'; auto.
+  rewrite andb_orb_distrib_l, andb_true_r, orb_true_r.
+  reflexivity.
+Qed.
+
+Lemma forallb_exist_des_rev a lst lst' :
+  forallb_exist lst (lst' ++ [a]) = true -> is_less_exist a lst = true /\ forallb_exist lst lst' = true.
+Proof.
+  ins.
+  induction lst'.
+  { simpl in H.
+    rewrite andb_true_r in H.
+    auto. }
+  simpl in H.
+  simpl.
+  rewrite andb_true_iff in *.
+  destruct H.
+  rewrite H.
+  rewrite and_comm, and_assoc.
+  split; auto.
+  apply and_comm.
+  apply IHlst'; auto.
+Qed.
+
+Lemma forallb_not_exist_des a lst lst' :
+  forallb_not_exist lst (a::lst') = true -> is_less_exist a lst = false /\ forallb_not_exist lst lst' = true.
+Proof.
+  ins.
+  apply andb_prop in H.
+  destruct H.
+  apply negb_true_iff in H.
+  auto.
+Qed.
+
+Lemma forallb_not_exist_des_rev a lst lst' :
+  forallb_not_exist lst (lst' ++ [a]) = true -> is_less_exist a lst = false /\ forallb_not_exist lst lst' = true.
+Proof.
+  ins.
+  induction lst'.
+  { simpl.
+    simpl in H.
+    rewrite andb_true_r in H.
+    apply negb_true_iff in H.
+    rewrite H.
+    auto. }
+  rewrite <- app_comm_cons in H.
+  apply forallb_not_exist_des in H.
+  destruct H.
+  simpl.
+  rewrite andb_true_iff, negb_true_iff.
+  apply and_comm, and_assoc.
+  split; auto.
+  apply and_comm, IHlst', H0.
+Qed.
+
+Lemma forallb_not_exist_elem a lst lst'
+      (H: forallb_not_exist (lst ++ [a]) lst' = true) : forallb_not_exist lst lst' = true.
+Proof.
+  induction lst'; auto.
+  apply forallb_not_exist_des in H.
+  destruct H.
+  simpl.
+  rewrite IHlst'; auto.
+  apply is_exist_not_cons_all in H.
+  destruct H.
+  rewrite H.
+  auto.
+Qed.
+
+Lemma is_less_exist_In a lst lst'
+      (H: forallb_exist lst lst')
+      (I: In a lst') :
+  is_less_exist a lst = true.
+Admitted.
+  
 Definition func_correct1 (f: t -> t -> t) :=
   forall u v w, is_less_than u v = is_less_than (f u w) (f v w).
 

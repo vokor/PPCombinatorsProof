@@ -377,7 +377,51 @@ Proof.
     auto. }
   destruct (is_less_exist a0 lst) eqn:E1; auto.
 Qed.
-  
+
+Lemma pareto_ins_elem_not_exist a b l r
+      (H1: is_less_than a b = false)
+      (H2: is_less_than b a = true) :
+  pareto (l ++ a::b::r) = pareto (l ++ b::r).
+Proof.
+Admitted.
+
+Lemma pareto_ins_list_exist l m r
+      (H1: forallb_exist r m = true)
+      (H2: forallb_not_exist m r = true) :
+  pareto (l ++ m ++ r) = pareto (l ++ r).
+Proof.
+  generalize dependent r.
+  induction m using rev_ind; auto.
+  ins.
+  rewrite <- app_assoc.
+  simpl.
+  apply forallb_exist_des_rev in H1.
+  destruct H1.
+  destruct r.
+  { simpl in H.
+    discriminate H. }
+  rewrite app_assoc.
+  apply forallb_not_exist_des in H2.
+  destruct H2.
+  rewrite is_exist_not_cons_all in H1.
+  destruct H1.
+  simpl in H3. unfold flip in H3.
+  rewrite orb_false_r in H3.
+  rewrite is_exist_cons_alt in H.
+  destruct (is_less_than t x) eqn:E1.
+  { rewrite pareto_ins_elem_not_exist.
+    { rewrite <- app_assoc.
+      apply IHm.
+      { apply H0. }
+      simpl.
+      rewrite H1. simpl.
+      apply (forallb_not_exist_elem x); auto. }
+    { apply H3. }
+    apply E1. }
+  rewrite <- orb_true_iff in H.
+  simpl in H.
+Admitted.
+
 Lemma pareto_nil : pareto nil = nil.
 Proof.
   unfold pareto.
@@ -859,7 +903,7 @@ Proof.
   { destruct (total_width (f a y) <=? w) eqn:E1.
     { rewrite is_exist_cons_alt.
       red in F. desf.
-      rewrite <- F1. auto. }    
+      rewrite <- F1. auto. }
     rewrite (is_less_than_func_t_l _ _ x) in E1; auto. }
   auto.
 Qed.
@@ -1042,60 +1086,112 @@ Proof.
   rewrite pareto_ins_elem_exist; auto.
 Qed.
 
+Lemma forallb_add_gener_true f a b w lst
+      (H: is_less_than a b = true)
+      (F: func_correct f) :
+  forallb_exist (add_general f w lst a) (add_general f w lst b) = true.
+Admitted.
+  
 Lemma remove_pareto lst lst' f w
       (F: func_correct f) :
   cross_general f w (pareto lst) (pareto lst') =
   cross_general f w lst lst'.
-Proof.
-  rewrite remove_pareto_fst; auto.
+Proof. 
+  rewrite remove_pareto_fst; auto. 
   unfold cross_general.
   induction lst' using rev_ind; auto.
   destruct (is_less_exist x lst') eqn:E1.
   { rewrite linear_pareto_exist; auto.
     rewrite map_app.
     simpl.
-    rewrite IHlst'. (* I don't need induction here *)    
+    rewrite IHlst'. 
     induction lst' as [|x0 lst' _] using rev_ind.
     { simpl in E1.
       discriminate E1. }
+    clear IHlst'.
     rewrite map_app. simpl.
     repeat rewrite concat_app.
     simpl.
     repeat rewrite app_nil_r.
     rewrite pareto_list_remove with
         (lst:= concat (map (add_general f w lst) lst') ++ add_general f w lst x0); auto.
-    generalize E1, lst, lst'.
-    intros mas' mas.
-    induction mas'.
-    { simpl.
-      unfold flip.
-      rewrite orb_false_r.
-      ins.
+    induction lst'.
+    { simpl. simpl in E1.
+      unfold flip in E1.
+      rewrite orb_false_r in E1.
       unfold add_general, map_filter.
       set (l := nil) at 1.
-      set (r := nil).
-      assert (Lem : forallb_two l r = true); auto.
-      generalize dependent r, l.
-      induction mas.
+      set (r := nil). 
+      assert (Lem : forallb_exist l r = true); auto.
+      generalize dependent r.
+      generalize dependent l.
+      induction lst.
       { ins.
-        (*
-        induction l; auto.
-        simpl. unfold flip.
-        rewrite is_less_than_reflexivity.
-        simpl. *)
-        admit. }
-      ins.
-      destruct (total_width (f a x) <=? w) eqn:E2.
-      { rewrite (is_less_than_func_t_r f x0 x); auto.
-        apply IHmas.
+        induction r; auto.
+        simpl in Lem.
         simpl.
-        red in F. desf.
-        rewrite <- F2.
-        rewrite E0. auto. }
-      destruct (total_width (f a x0) <=? w) eqn:E3.
-      { (* PROBLEMS *)    
-    admit.
-    
+        apply andb_prop in Lem.
+        destruct Lem.
+        rewrite H.
+        auto. }
+      ins.
+      destruct (total_width (f a x0) <=? w) eqn:E2.
+      { destruct (total_width (f a x) <=? w) eqn:E3.
+        { apply IHlst.
+          simpl.
+          unfold flip.
+          red in F. desf.
+          unfold func_correct2 in F2.
+          rewrite <- F2. 
+          rewrite E1, forallb_exist_correct; auto. }
+        apply IHlst.
+        apply forallb_exist_correct; auto. }
+      rewrite (is_less_than_func_f_r f x0); auto. }
+    simpl.
+    apply forallb_forall.
+    rewrite forallb_forall in IHlst'.
+    ins.
+    rewrite <- app_assoc.
+    apply is_exist_cons_all.
+    unfold flip in E1.
+    destruct (is_less_than a x) eqn:E2.
+    { clear IHlst'. clear E1.
+      assert (Lem: is_less_exist x1 (add_general f w lst a) = true).
+      { apply (is_less_exist_In x1 _ (add_general f w lst x)); auto.
+        apply forallb_add_gener_true; auto. }
+      rewrite Lem.
+      auto. }
+    rewrite orb_false_l in E1; auto. }
+  rewrite linear_pareto_not_exist; auto.
+  repeat rewrite map_app, concat_app.
+  simpl.
+  rewrite app_nil_r.
+  symmetry.
+  rewrite pareto_linear_fst.
+  rewrite <- IHlst'.
+  rewrite <- pareto_linear_fst.
+  clear IHlst'.
+  assert (P: is_less_exist x (pareto lst') = false).
+  { apply pareto_inside in E1; auto. }
+  clear E1.
+  generalize P.
+  generalize (pareto lst').
+  clear P.
+  ins.
+  induction l using rev_ind; auto.
+  apply is_exist_not_cons_all in P.
+  simpl in P. unfold flip in P.
+  rewrite orb_false_r in P.
+  destruct P as [A B].
+  rewrite map_app, concat_app.
+  simpl. rewrite app_nil_r.
+  rewrite <- app_assoc.
+  destruct (is_less_than x x0) eqn:E1.
+  { rewrite par_elem2_less_rev; auto.
+    rewrite pareto_ins_list_exist.
+    { apply IHl, A. }
+    { admit. }
+    admit. }
 Admitted.
 
 Lemma cross_general_eq w f lst1 lst2 :
