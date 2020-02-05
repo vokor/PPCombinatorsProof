@@ -17,14 +17,6 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma pred_filter :
-  forall predicate a (lst: list t),
-    predicate a = true -> filter predicate (a::lst) = a :: (filter predicate lst).
-Proof.
-  intros P a lst H.
-  simpl. rewrite -> H. reflexivity.
-Qed.
-
 Lemma is_exist_not_cons_alt a h l  :
   is_less_exist a (h :: l) = false <->
   is_less_than h a = false /\ is_less_exist a l = false.
@@ -471,3 +463,73 @@ Lemma is_less_than_func_f_l f a b x w
 Admitted.
 
 
+Lemma leb_le_eq_true x y z :
+  x <= z <-> (x + y <=? z + y) = true.
+Proof.
+  split.
+    { intro T.
+      eapply introT. apply Nat.leb_spec0.
+      apply plus_le_compat_r; auto. }
+    intro T.
+    eapply elimT in T; [|apply Nat.leb_spec0].
+    apply <- Nat.add_le_mono_r. eauto.
+Qed.
+
+Lemma leb_eq x y z : 
+  x <=? y = (x + z <=? y + z).
+Proof.
+  symmetry.
+  destruct (x <=? y) eqn:E1.
+  { eapply elimT in E1; [|apply Nat.leb_spec0].
+    apply leb_correct.
+    apply Nat.add_le_mono_r; auto. }
+  eapply elimF in E1; [|apply Nat.leb_spec0].
+  apply leb_correct_conv.
+  apply Nat.lt_nge in E1.
+  apply plus_lt_compat_r; auto.
+Qed.
+
+Lemma indent'_linear a b sh :
+  is_less_than a b = is_less_than (indent' sh a) (indent' sh b).
+Proof.
+  symmetry.
+  destruct (is_less_than a b) eqn:E1.
+  { unfold is_less_than in *.
+    andb_split.
+    repeat (apply andb_true_iff;
+            unfold indent';
+            destruct a; destruct b;
+            simpl in *; split).
+    repeat (apply andb_true_iff; split); auto.
+    { eapply elimT in H2; [|apply Nat.leb_spec0].
+      apply leb_le_eq_true; auto. }
+    { eapply elimT in H1; [|apply Nat.leb_spec0].
+      apply leb_le_eq_true; auto. }
+    eapply elimT in H0; [|apply Nat.leb_spec0].
+    apply leb_le_eq_true; auto.
+  }
+  unfold is_less_than in *.
+  unfold indent'.
+  destruct (height a <=? height b) eqn:E2.
+  { destruct a; destruct b.
+    simpl in *. rewrite E2. simpl.
+    destruct (first_line_width + sh <=? first_line_width0 + sh) eqn:E3.
+    { simpl.
+      destruct (middle_width + sh <=? middle_width0 + sh) eqn:E4.
+      { simpl.
+        rewrite <- leb_le_eq_true in E3.
+        rewrite <- leb_le_eq_true in E4.
+        rewrite <- leb_eq.
+        destruct (first_line_width <=? first_line_width0) eqn:E5.
+        { destruct (middle_width <=? middle_width0) eqn:E6.
+          { simpl in E1. apply E1. }
+          apply leb_correct in E4. rewrite E4 in E6.
+          discriminate E6. }
+        apply leb_correct in E3. rewrite E3 in E5.
+          discriminate E5. }
+      auto. }
+    auto. }
+  destruct a; destruct b.
+  simpl in *. rewrite E2.
+  auto.
+Qed.
