@@ -16,6 +16,9 @@ Definition blank_line := (line "")::nil.
 (* Construct document from 'string' using 'above' rule *)
 Definition constructDoc (s: string) := (of_string s)::nil.
 
+Definition indentDoc (width: nat) (shift: nat) (fs: list t) :=
+  cross_general width (fun _ a => indent' width a) nil fs.
+
 (* Use 'beside' rule for 2 documents. New document ~ n x m *)
 Definition besideDoc (width: nat) (fs1: list t) (fs2: list t) := 
   cross_general width add_beside fs1 fs2.

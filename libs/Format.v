@@ -16,13 +16,6 @@ Definition is_less_than  (G:t) (G':t): bool :=
       (G.(middle_width) <=? G'.(middle_width)) &&
       (G.(last_line_width) <=? G'.(last_line_width)).
 
-Definition compare (G:t) (G':t): comparison :=
-  match is_less_than G G', is_less_than G' G with
-  | true,false => Lt
-  | false,true => Gt
-  | _,_        => Eq
-  end.
-
 Definition empty: t := T 0 0 0 0 (fun s t => t).
 
 Definition line (nt:string): t :=

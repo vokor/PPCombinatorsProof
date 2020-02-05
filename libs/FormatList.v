@@ -5,6 +5,7 @@ Open Scope list_scope.
 Require Import ZArith Int.
 Require Import Coq.Lists.List.
 Require Import String.
+Require Import Coq.Program.Basics.
 
 Definition map_filter (mapf: t -> t) (filterf: t -> bool) (l: list t): list t := 
   fold_right
@@ -15,13 +16,11 @@ Definition map_filter (mapf: t -> t) (filterf: t -> bool) (l: list t): list t :=
     )
     nil l.
 
-Require Import Coq.Program.Basics.
-
-(* I mean does exist B from lst : B < A *)
+(* Does exist B from lst : B <= A *)
 Definition is_less_exist (a: t) (lst: list t) : bool :=
   existsb ((flip is_less_than) a) lst.
 
-(* Remove all elements > a *)
+(* Remove all elements >= a *)
 Definition pareto_by_elem (a: t) (lst: list t) :=
   filter (compose negb (is_less_than a)) lst.
 
@@ -50,6 +49,12 @@ Definition cross_general (op: t -> t -> t) (width: nat) (fl1: list t) (fl2: list
 (* Construct document from 'string' using 'above' rule *)
 Definition constructDoc (s: string) := (of_string s)::nil.
 
+(* Shift each block to 'shift' positions right *)
+Definition indentDoc (width: nat) (shift: nat) (fs: list t) :=
+  map_filter (indent' shift)
+             (fun f => total_width f <=? width)
+             fs.
+
 (* Use 'beside' rule for 2 documents. New document ~ n x m *)
 Definition besideDoc (width: nat) (fs1: list t) (fs2: list t) := 
   cross_general add_beside width fs1 fs2.
@@ -64,8 +69,7 @@ Definition fillDoc (width: nat)(fs1: list t) (fs2: list t) (shift: nat) :=
                   width fs1 fs2.
 
 (* Choice operation *)
-Definition choiceDoc (fs1: list t) (fs2: list t) := 
-    (pareto (fs1 ++ fs2)).
+Definition choiceDoc (fs1: list t) (fs2: list t) := pareto (fs1 ++ fs2).
 
 Fixpoint evaluatorList (width: nat) (doc: Doc): list t:=
   match doc with
