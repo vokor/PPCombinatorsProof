@@ -181,6 +181,15 @@ Proof.
   rewrite !PeanoNat.Nat.leb_refl. auto.
 Qed.
 
+Lemma is_less_than_get_false a b c
+      (H1: is_less_than a b = true)
+      (H2: is_less_than a c = false) :
+  is_less_than b c = false.
+Proof.
+  destruct (is_less_than b c) eqn:E1; auto.
+  rewrite (is_less_than_transitivity a b c) in H2; auto.
+Qed.
+   
 Lemma is_less_exist_cont_true a b lst 
     (A: is_less_than a b = true)
     (B: is_less_exist a lst = true) : is_less_exist b lst = true.
@@ -250,23 +259,55 @@ Proof.
 Qed.
 
 Lemma forallb_exist_des_rev a lst lst' :
-  forallb_exist lst (lst' ++ [a]) = true -> is_less_exist a lst = true /\ forallb_exist lst lst' = true.
+  forallb_exist lst (lst' ++ [a]) = true <-> is_less_exist a lst = true /\ forallb_exist lst lst' = true.
+Proof.
+  split.
+  { ins.
+    induction lst'.
+    { simpl in H.
+      rewrite andb_true_r in H.
+      auto. }
+    simpl in H.
+    simpl.
+    rewrite andb_true_iff in *.
+    destruct H.
+    rewrite H.
+    rewrite and_comm, and_assoc.
+    split; auto.
+    apply and_comm.
+    apply IHlst'; auto. }
+  ins.
+  desf.
+  induction lst'.
+  { simpl. rewrite H. auto. }
+  simpl.
+  simpl in H0.
+  apply andb_true_iff in H0.
+  desf.
+  rewrite IHlst'; auto.
+Qed.  
+
+Lemma forallb_exist_rem_list_r l r lst :
+  forallb_exist r lst = true -> forallb_exist (l ++ r) lst = true.
 Proof.
   ins.
-  induction lst'.
-  { simpl in H.
-    rewrite andb_true_r in H.
-    auto. }
-  simpl in H.
-  simpl.
-  rewrite andb_true_iff in *.
-  destruct H.
-  rewrite H.
-  rewrite and_comm, and_assoc.
-  split; auto.
-  apply and_comm.
-  apply IHlst'; auto.
+  induction lst using rev_ind; auto.
+  rewrite forallb_exist_des_rev in *.
+  desf.
+  rewrite is_exist_cons_all.
+  auto.
 Qed.
+
+Lemma forallb_exist_rem_list_l l r lst :
+  forallb_exist l lst = true -> forallb_exist (l ++ r) lst = true.
+Proof.
+  ins.
+  induction lst using rev_ind; auto.
+  rewrite forallb_exist_des_rev in *.
+  desf.
+  rewrite is_exist_cons_all.
+  auto.
+Qed.  
 
 Lemma forallb_not_exist_des a lst lst' :
   forallb_not_exist lst (a::lst') = true -> is_less_exist a lst = false /\ forallb_not_exist lst lst' = true.
@@ -279,29 +320,98 @@ Proof.
 Qed.
 
 Lemma forallb_not_exist_des_rev a lst lst' :
-  forallb_not_exist lst (lst' ++ [a]) = true -> is_less_exist a lst = false /\ forallb_not_exist lst lst' = true.
+  forallb_not_exist lst (lst' ++ [a]) = true <-> is_less_exist a lst = false /\ forallb_not_exist lst lst' = true.
 Proof.
+  split.
+  { ins.
+    induction lst'.
+    { simpl.
+      simpl in H.
+      rewrite andb_true_r in H.
+      apply negb_true_iff in H.
+      rewrite H.
+      auto. }
+    rewrite <- app_comm_cons in H.
+    apply forallb_not_exist_des in H.
+    destruct H.
+    simpl.
+    rewrite andb_true_iff, negb_true_iff.
+    apply and_comm, and_assoc.
+    split; auto.
+    apply and_comm, IHlst', H0. }
   ins.
+  destruct H.
   induction lst'.
   { simpl.
-    simpl in H.
-    rewrite andb_true_r in H.
-    apply negb_true_iff in H.
     rewrite H.
     auto. }
-  rewrite <- app_comm_cons in H.
-  apply forallb_not_exist_des in H.
-  destruct H.
   simpl.
-  rewrite andb_true_iff, negb_true_iff.
-  apply and_comm, and_assoc.
-  split; auto.
-  apply and_comm, IHlst', H0.
+  simpl in H0.
+  apply andb_prop in H0.
+  destruct H0.
+  rewrite H0, IHlst'; auto.
 Qed.
 
-Lemma forallb_not_exist_elem a lst lst'
-      (H: forallb_not_exist (lst ++ [a]) lst' = true) : forallb_not_exist lst lst' = true.
+Lemma forallb_not_exist_des_lst l r lst :
+  forallb_not_exist (l ++ r) lst = true <->
+  forallb_not_exist l lst = true /\ forallb_not_exist r lst = true.
 Proof.
+  split.
+  { ins.
+    induction lst; auto.
+    apply forallb_not_exist_des in H.
+    destruct H.
+    apply is_exist_not_cons_all in H.
+    destruct H.
+    simpl.
+    rewrite H, H1.
+    simpl.
+    apply IHlst; auto. }
+  ins.
+  desf.
+  induction lst; auto.
+  simpl.
+  apply forallb_not_exist_des in H.
+  apply forallb_not_exist_des in H0.
+  desf.
+  rewrite andb_true_iff, negb_true_iff.
+  rewrite is_exist_not_cons_all.
+  auto.
+Qed.
+
+Lemma forallb_not_exist_des_lst' l r lst :
+  forallb_not_exist lst (l ++ r) = true <->
+  forallb_not_exist lst l = true /\ forallb_not_exist lst r = true.
+Proof.
+  split.
+  { ins.
+    induction r using rev_ind.
+    { simpl.
+      rewrite app_nil_r in H.
+      auto. }
+    rewrite app_assoc in H.
+    apply forallb_not_exist_des_rev in H.
+    destruct H.
+    rewrite forallb_not_exist_des_rev.
+    rewrite H.
+    apply and_comm, and_assoc.
+    rewrite and_comm in IHr.
+    split; auto. }
+  ins.
+  destruct H.
+  induction r using rev_ind.
+  { rewrite app_nil_r.
+    apply H. }
+  rewrite app_assoc.
+  rewrite forallb_not_exist_des_rev in *.
+  destruct H0.
+  auto.
+Qed.
+    
+Lemma forallb_not_exist_elem a lst lst' :
+     forallb_not_exist (lst ++ [a]) lst' = true -> forallb_not_exist lst lst' = true.
+Proof.
+  intro H.
   induction lst'; auto.
   apply forallb_not_exist_des in H.
   destruct H.
