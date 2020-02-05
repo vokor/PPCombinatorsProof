@@ -9,7 +9,7 @@ Require Import String.
 Definition cross_general (width: nat) (op: t -> t -> t) (fl1: list t) (fl2: list t) :=
   List.filter 
     (fun f => total_width f <=? width)
-    (List.concat (map (fun f => map (op f) fl2) fl1)).
+    (List.concat (map (fun b => map (fun a => op a b) fl1) fl2)).
 
 Definition blank_line := (line "")::nil.
 

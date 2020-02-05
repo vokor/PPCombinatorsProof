@@ -7,13 +7,13 @@ Require Import Coq.Lists.List.
 Require Import String.
 
 Definition map_filter (mapf: t -> t) (filterf: t -> bool) (l: list t): list t := 
-  fold_left
-    (fun lst a => let b := mapf a in
+  fold_right
+    (fun a lst => let b := mapf a in
                   if (filterf b)
                   then cons b lst
                   else lst
     )
-    l nil.
+    nil l.
 
 Require Import Coq.Program.Basics.
 
