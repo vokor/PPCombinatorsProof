@@ -1226,48 +1226,169 @@ Proof.
   reflexivity.
 Qed.
 
+Definition indent_tuple sh := fun _ a : t => indent' sh a.
+
+Lemma indent_eq_tuple a sh w :
+  (total_width (indent' sh a) <=? w) = (total_width (indent_tuple sh a a) <=? w).
+Proof.
+  unfold indent_tuple.
+  reflexivity.
+Qed.
+
+Lemma tuple_indent_correct :
+  forall sh, func_correct (indent_tuple sh).
+Proof.
+  unfold indent_tuple.
+  apply indent_correct.
+Qed.
+  
+Lemma indent_exist x lst sh w
+     (H1: is_less_exist x lst = true)
+     (H2: (total_width (indent' sh x) <=? w) = true) :
+  is_less_exist (indent' sh x) (indentDoc w sh lst) = true.
+Proof.
+  induction lst; auto.
+  simpl.
+  apply is_exist_cons_alt in H1.
+  rewrite indent_eq_tuple in H2.
+  desf.
+  { apply is_exist_cons_alt.
+    rewrite <- indent'_linear.
+    rewrite H1; auto. }
+  { rewrite indent_eq_tuple in Heq.
+    rewrite (is_less_than_func_t_r _ a x) in Heq; auto.
+    apply tuple_indent_correct. }
+  { simpl.
+    rewrite IHlst; auto.
+    apply orb_true_r. }
+  apply IHlst.
+  reflexivity.
+Qed.    
+
+Lemma indent_pareto_by_elem lst w sh x:
+  indentDoc w sh (pareto_by_elem x lst) = pareto_by_elem (indent' sh x) (indentDoc w sh lst).
+Proof.
+  induction lst; auto.
+  destruct (is_less_than x a) eqn:E1.
+  { rewrite par_elem2_less; auto.
+    simpl.
+    destruct (total_width (indent' sh a) <=? w).
+    { rewrite par_elem2_less.
+      { apply IHlst. }
+      rewrite <- indent'_linear.
+      apply E1. }
+    apply IHlst. }
+  rewrite par_elem2_not_less; auto.
+  simpl.
+  destruct (total_width (indent' sh a) <=? w).
+  { rewrite par_elem2_not_less.
+    { rewrite IHlst.
+      reflexivity. }
+    rewrite <- indent'_linear.
+    apply E1. }
+  apply IHlst.
+Qed.  
+
+Lemma indentDoc_pareto_by_elem lst w sh x
+      (H: (total_width (indent' sh x) <=? w) = false) :
+  pareto_by_elem (indent' sh x) (indentDoc w sh lst) = indentDoc w sh lst.
+Proof.
+  rewrite <- indent_pareto_by_elem.
+  induction lst; auto.
+  destruct (is_less_than x a) eqn:E1.
+  { rewrite par_elem2_less; auto.
+    rewrite indent_eq_tuple in H.
+    simpl.
+    rewrite indent_eq_tuple.
+    rewrite (is_less_than_func_f_r _ x a); auto.
+    apply tuple_indent_correct. }
+  rewrite par_elem2_not_less; auto.
+  simpl.
+  desf.
+  rewrite IHlst.
+  reflexivity.
+Qed.  
+
+Lemma indent_with_pareto w sh lst :
+  indentDoc w sh (pareto lst) = pareto (indentDoc w sh lst).
+Proof.
+  assert (Rev_destruct: forall a l, indentDoc w sh (l ++ [a]) =
+                                    indentDoc w sh l ++ (if total_width (indent' sh a) <=? w then indent' sh a::nil else nil)).
+  {
+    ins.
+    induction l; auto.
+    simpl.
+    destruct (total_width (indent' sh a0) <=? w).
+    { simpl.
+      rewrite IHl.
+      reflexivity. }
+    apply IHl. } 
+  assert (F: func_correct (fun _ a : t => indent' w a)).
+  { apply indent_correct. }
+  red in F.
+  desf.
+  induction lst using rev_ind; auto.
+  destruct (is_less_exist x lst) eqn:E1.
+  { rewrite linear_pareto_exist; auto.
+    rewrite Rev_destruct.
+    destruct (total_width (indent' sh x) <=? w) eqn:E2.
+    { destruct (is_less_exist (indent' sh x) (indentDoc w sh lst)) eqn:E3.
+      { rewrite linear_pareto_exist; auto. }
+      rewrite indent_exist in E3; auto.
+      discriminate E3. }
+    rewrite app_nil_r.
+    apply IHlst. }
+  rewrite linear_pareto_not_exist; auto.
+  repeat rewrite Rev_destruct.
+  destruct (total_width (indent' sh x) <=? w) eqn:E2.
+  { rewrite indent_pareto_by_elem.
+    rewrite linear_pareto_not_exist.
+    { rewrite IHlst.
+      reflexivity. }
+    generalize E1.
+    clear.
+    ins.
+    induction lst; auto.
+    apply is_exist_not_cons_alt in E1.
+    simpl.
+    desf.
+    { apply is_exist_not_cons_alt.
+      rewrite <- indent'_linear.
+      rewrite E1; auto. }
+    apply IHlst.
+    reflexivity. }
+  repeat rewrite app_nil_r.
+  rewrite indent_pareto_by_elem.
+  rewrite <- IHlst.
+  rewrite indentDoc_pareto_by_elem; auto.
+Qed.
+  
 Lemma pareto_indent sh d w
     (H: pareto (evaluatorTrivial w d) = (evaluatorList w d)) :
     pareto (FormatTrivial.indentDoc w sh (evaluatorTrivial w d))
         = FormatList.indentDoc w sh (evaluatorList w d).
 Proof.
-  rewrite <- H.
+  rewrite <- H. clear H.
   set (lst := evaluatorTrivial w d).
-  induction lst using rev_ind. auto.
-Admitted.
-
-  (*
-  destruct (main_pred w sh x) eqn:E1.
-  { rewrite linear_indent_true_e; auto.
-    { destruct (is_less_exist x lst) eqn:E2.
-      { rewrite linear_pareto_exist, IHlst, linear_pareto_exist; auto.
-        rewrite linear_indent_op; auto. }
-      repeat rewrite linear_pareto_not_exist; auto.
-      rewrite IHlst, pareto_indent_elem, linear_indent_true_e; auto.
-      rewrite linear_indent_op; auto. } }
-  rewrite linear_indent_false_e; auto.
-  rewrite IHlst.
-  destruct (is_less_exist x lst) eqn:E2.
-  { rewrite linear_pareto_exist; auto. }
-  rewrite linear_pareto_not_exist; auto.
-  rewrite linear_indent_false_e; auto.
-  set (mas := pareto lst).
-  induction mas. auto.
-  destruct (main_pred w sh a) eqn:E3.
-  { rewrite linear_indent_true_f; auto.
-    simpl. rewrite eq_conv_is_less.
-    destruct (is_less_than x a) eqn:E4.
-    { rewrite (main_pred_transitivity w sh x a) in E3; auto.
-      discriminate E3. }
-    simpl (if ~~ false then a :: pareto_by_elem x mas else pareto_by_elem x mas).
-    rewrite linear_indent_true_f; auto.
-    rewrite IHmas. reflexivity. }
-  rewrite linear_indent_false_f; auto.
-  simpl. rewrite eq_conv_is_less.
-  destruct (is_less_than x a) eqn:E4; auto.
-  simpl (if ~~ false then a :: pareto_by_elem x mas else pareto_by_elem x mas).
-  rewrite linear_indent_false_f; auto.
-Qed. *)
+  rewrite indent_with_pareto.
+  unfold FormatTrivial.indentDoc.
+  rewrite cross_general_eq.
+  unfold cross_general.
+  assert (Lem: concat (map (add_general (fun _ a : t => indent' sh a) w (empty::nil)) lst) =
+               indentDoc w sh lst).
+  { unfold indentDoc.
+    induction lst; auto.
+    simpl.
+    destruct (total_width (indent' sh a) <=? w).
+    { simpl.
+      rewrite IHlst.
+      reflexivity. }
+    simpl.
+    apply IHlst.
+  }
+  rewrite Lem.
+  reflexivity.
+Qed.
 
 Lemma pareto_beside a b w
       (H: neighb_pareto a b w) :
@@ -1316,22 +1437,480 @@ Lemma pareto_fill a b w n
   apply fill_correct.
 Qed.
 
-(*---------MAIN Theorem-----------*)
-Theorem listEqTrivialProof :
-  forall x width,
-    (pretty evaluatorTrivial width x) = (pretty evaluatorList width x).
+Lemma pareto_choice a b w
+      (H: neighb_pareto a b w) :
+  pareto (FormatTrivial.choiceDoc (evaluatorTrivial w a) (evaluatorTrivial w b)) =
+  FormatList.choiceDoc (evaluatorList w a) (evaluatorList w b).
+Proof.
+  red in H. desf.
+  rewrite <- H.
+  rewrite <- H0.
+  set (lst := evaluatorTrivial w a).
+  set (arr := evaluatorTrivial w b).
+  unfold choiceDoc.
+  rewrite pareto_linear.
+  reflexivity.
+Qed.
+
+Lemma pareto_common width doc :
+  pareto (evaluatorTrivial width doc) = evaluatorList width doc.
+Proof.
+  induction doc; auto.
+  all: simpl.
+  { apply pareto_indent.
+    apply IHdoc. }
+  { apply pareto_beside.
+    rels. }
+  { apply pareto_above.
+    rels. }
+  { apply pareto_choice.
+    rels. }
+  apply pareto_fill.
+  rels.
+Qed.
+
+Require Import Lia.
+
+(*
+Lemma height_less a b :
+  is_less_than a b = true -> (a.(height) <=? b.(height)) = true.
 Proof.
   ins.
-  unfold pretty.
-  destruct x.
-  all: simpl.
-  { admit. }
-  { unfold indentDoc. admit. }
-  { unfold besideDoc.
-    unfold FormatTrivial.besideDoc.
-    
+  unfold is_less_than in H.
+Admitted.
+
+Lemma width_less a b :
+  is_less_than a b = true -> (total_width a <=? total_width b) = true.
+Proof.
+Admitted.  
+*)
+
+Lemma is_better_true a b : is_less_than a b = true -> is_better_than a b = a.
+Proof.
+  ins.
+  unfold is_better_than.
+  unfold is_less_than in H.
+  andb_split.
+  apply leb_complete in H0.
+  apply leb_complete in H1.
+  apply leb_complete in H2.
+  apply leb_complete in H.
+  desf. (*
+  { apply Nat.compare_eq in Heq.
+    apply Nat.compare_eq in Heq0.
+    unfold is_less_than in Heq1.
+    desf.
+    { apply leb_complete_conv in Heq1. lia. }
+    { apply leb_complete_conv in Heq1. lia. }
+    { apply leb_complete_conv in Heq1. lia. }
+    apply leb_complete_conv in Heq1. lia. }
+  { apply nat_compare_gt in Heq0.
+    apply Nat.compare_eq in Heq.
+    unfold total_width in Heq0.
+    desf. ins. lia. } (*FIXME: instead of ins? *)
+  apply nat_compare_gt in Heq.
+  lia. *)
+Admitted. 
+
+Lemma better_destruct a b :
+  is_better_than a b = a \/ is_better_than a b = b.
+Proof.
+  unfold is_better_than.
+  desf; auto.
+Qed.
+
+Lemma is_better_less a b
+      (H1: is_less_than a b = false)
+      (H2: is_less_than b a = true) : is_better_than a b = b.
 Admitted.
 
 (*
+Lemma is_better_tr1 a b c
+      (H1: is_better_than a b = a)
+      (H2: is_better_than b c = b) : is_better_than a c = a.
+Proof.
+  unfold is_better_than in *.
+  desf.
+  { apply hahn__nandb_split in Heq3.
+    apply hahn__nandb_split in Heq1.
+    rewrite negb_false_iff in Heq3.
+    rewrite negb_false_iff in Heq1.
+    apply NPeano.Nat.ltb_ge in Heq2.
+    apply NPeano.Nat.ltb_ge in Heq0.
+    apply NPeano.Nat.ltb_lt in Heq.
+    desf.
+    all: lia. }
+  apply hahn__nandb_split in Heq4.
+  apply hahn__nandb_split in Heq2.
+  apply andb_prop in Heq0.
+  apply Nat.ltb_ge in Heq3.
+  apply Nat.ltb_ge in Heq1.
+  apply Nat.ltb_ge in Heq.
+  desf.
+  { apply Nat.eqb_neq in Heq4.
+    apply Nat.eqb_neq in Heq2.
+    apply Nat.eqb_eq in Heq0.
+    lia. }
+  { apply negb_false_iff in Heq4.
+    apply beq_nat_true in Heq0.
+    apply Nat.eqb_neq in Heq2.
+    lia. }
+  { apply Nat.eqb_neq in Heq4.
+    apply Nat.eqb_eq in Heq0.
+    lia. }
+  apply negb_true_iff in Heq5.
+  apply negb_false_iff in Heq4.
+  apply negb_false_iff in Heq2.
+  rewrite (nat_leb_trans _ (total_width b)) in Heq5; auto.
+  discriminate Heq5.
+Qed.    *)
+
+(*
+Lemma is_better_tr2 a b c
+      (H1: is_better_than a b = b)
+      (H2: is_better_than b c = c) : is_better_than a c = c.
+Proof. 
+  unfold is_better_than in *.
+  desf.
+  { apply Nat.ltb_lt in Heq2.
+    apply Nat.ltb_lt in Heq1.
+    apply NPeano.Nat.ltb_ge in Heq.
+    lia. }
+  { apply andb_prop in Heq3.
+    apply hahn__nandb_split in Heq0.
+    apply Nat.ltb_lt in Heq1.
+    apply Nat.ltb_ge in Heq2.
+    apply Nat.ltb_ge in Heq.
+    desf.
+    { apply beq_nat_true in Heq3.
+      apply beq_nat_false in Heq0.
+      lia. }
+    apply beq_nat_true in Heq3.
+    lia. }
+  { apply andb_prop in Heq2.
+    apply hahn__nandb_split in Heq0.
+    apply Nat.ltb_lt in Heq3.
+    apply Nat.ltb_ge in Heq1.
+    apply Nat.ltb_ge in Heq.
+    desf.
+    { apply beq_nat_true in Heq2.
+      apply beq_nat_false in Heq0.
+      lia. }
+    apply Nat.eqb_eq in Heq2.
+    lia. }
+  apply Nat.ltb_ge in Heq3.
+  apply Nat.ltb_ge in Heq1.
+  apply Nat.ltb_ge in Heq.
+  apply andb_prop in Heq4.
+  apply andb_prop in Heq2.
+  apply hahn__nandb_split in Heq0.
+  desf.
+  { apply Nat.eqb_eq in Heq4.
+    apply Nat.eqb_neq in Heq0.
+    apply Nat.eqb_eq in Heq2.
+    lia. }
+  apply negb_false_iff in Heq0.
+  apply negb_true_iff in Heq6.
+  apply negb_true_iff in Heq5.
+  apply leb_iff_conv in Heq6.
+  apply leb_iff_conv in Heq5.
+  apply leb_complete in Heq0.
+  lia. *)
+
+
+Lemma is_better_tr3 a b c
+      (H1: is_better_than a b = a)
+      (H2: is_better_than a c = c) : is_better_than c b = c.
+Proof. (*
+  unfold is_better_than in *.
+  desf.
+  { apply Nat.ltb_lt in Heq1. lia. }
+  { apply Nat.ltb_lt in Heq0.
+    apply Nat.ltb_lt in Heq.
+    lia. }
+  { apply Nat.ltb_lt in Heq0.
+    apply Nat.ltb_lt in Heq.
+    apply Nat.ltb_ge in Heq1.
+    lia. }
+  { apply Nat.ltb_lt in Heq2. lia. }
+  { apply andb_prop in Heq3.
+    desf.
+    apply negb_true_iff in Heq4.
+    apply Nat.leb_gt in Heq4.
+    lia. }
+  { apply andb_prop in Heq1.
+    desf.
+    { apply Nat.ltb_lt in Heq.
+      apply beq_nat_true in Heq1.
+      apply NPeano.Nat.ltb_ge in Heq0.
+      apply NPeano.Nat.ltb_ge in Heq2.
+      lia. }
+    apply beq_nat_true in Heq1.
+    apply Nat.ltb_ge in Heq2.
+    apply Nat.ltb_lt in Heq.
+    lia. }
+  { apply Nat.ltb_lt in Heq2. lia. }
+  { apply andb_prop in Heq3.
+    desf.
+    apply negb_true_iff in Heq4.
+    apply Nat.leb_gt in Heq4.
+    lia. }
+  { apply Nat.ltb_lt in Heq1.
+    apply Nat.ltb_ge in Heq2.
+    apply Nat.ltb_ge in Heq.
+    apply andb_prop in Heq0.
+    destruct Heq0.
+    apply beq_nat_true in H. lia. }
+  { apply Nat.ltb_lt in Heq3. lia. }
+  { apply andb_prop in Heq4.
+    desf.
+    apply negb_true_iff in Heq5.
+    apply Nat.leb_gt in Heq5.
+    lia. }
+  apply andb_prop in Heq2.
+  apply andb_prop in Heq0.
+  destruct Heq2.
+  destruct Heq0.
+  apply negb_true_iff in H0.
+  apply negb_true_iff in H4.
+  apply Nat.leb_gt in H0.
+  apply Nat.leb_gt in H4.
+  apply Nat.ltb_ge in Heq3.
+  apply Nat.ltb_ge in Heq1.
+  apply Nat.ltb_ge in Heq.
+  apply Nat.eqb_eq in H3.
+  apply Nat.eqb_eq in H.
+  desf.
+  { apply Nat.eqb_neq in Heq4.
+    lia. }
+  apply negb_false_iff in Heq4.
+  apply leb_complete in Heq4.
+  lia. *)
+Admitted.
+
+(*
+Lemma is_better_assoc a b c :
+  is_better_than a (is_better_than b c) = is_better_than (is_better_than a b) c.
+Proof.
+  destruct (better_destruct a (is_better_than b c)).
+  { rewrite H.
+    destruct (better_destruct (is_better_than a b) c).
+    { rewrite H0.
+      destruct (better_destruct a b).
+      { rewrite H1.
+        reflexivity. }
+      rewrite H1 in H0.
+      rewrite H0 in H.
+      rewrite H.
+      reflexivity. }
+    destruct (better_destruct b c).
+    { rewrite H1 in H.
+      rewrite H in H0.
+      assert (H2: is_better_than a c = a).
+      { apply (is_better_tr1 a b c); auto. }
+      rewrite <- H2 at 1.
+      rewrite H.
+      reflexivity. }
+    rewrite H1 in H.
+    destruct (better_destruct a b).
+    { rewrite H2 in H0.
+      rewrite H2.
+      rewrite H.
+      reflexivity. }
+    rewrite H0.
+    rewrite (is_better_tr2 _ b) in H; auto. }
+  rewrite H.
+  destruct (better_destruct (is_better_than a b) c).
+  { rewrite H0.
+    destruct (better_destruct a b).
+    { rewrite H1 in H0.
+      destruct (better_destruct b c).
+      { rewrite H2 in H.
+        rewrite H, H2.
+        reflexivity. }
+      rewrite H2 in H.
+      rewrite H1, H2.
+      rewrite <- H.
+      rewrite <- H0 at 2.
+      reflexivity. }
+    rewrite H1 in H0.
+    rewrite H0, H1.
+    reflexivity. }
+  rewrite H0.
+  destruct (better_destruct a b).
+  { rewrite H1 in H0.
+    destruct (better_destruct b c).
+    { rewrite H2 in H.
+      assert (H3: is_better_than a c = a).
+      { apply (is_better_tr1 _ b); auto. }
+      rewrite H1 in H.
+      rewrite H3 in H0.
+      rewrite <- H0 at 2.
+      rewrite H.
+      apply H2. }
+    apply H2. }
+  rewrite H1 in H0.
+  apply H0.
+Qed. *)
+
+Lemma is_better_out lst :
+  forall a b,
+  fold_left is_better_than (lst ++ [a]) b = is_better_than (fold_left is_better_than lst b) a.
+Proof.
+  induction lst; auto.
+  ins.
+Qed.
+
+Lemma pick_best_des' b lst :
+  forall a, pick_best (a::lst ++ [b]) = is_better_than (pick_best (a::lst)) b.
+Proof.
+  induction lst.
+  { simpl.
+    reflexivity. }
+  ins.
+Qed.
+      
+Lemma pick_best_des b lst : 
+  lst <> nil -> pick_best (lst ++ [b]) = is_better_than (pick_best lst) b.
+Proof.
+  induction lst; rels.
+  ins.
+  apply is_better_out.
+Qed.
+
+Lemma pareto_not_nil :
+  forall (lst: list t), lst <> nil -> pareto lst <> nil.
+Proof.
+  ins.
+Admitted.
+  
+
 Lemma pareto_filter_eq :
-  forall (lst:list t), (pareto lst <> nil) -> pick_best (pareto lst) = pick_best lst. *)
+  forall (lst:list t), pick_best lst = pick_best (pareto lst).
+Proof.
+  ins.
+  induction lst using rev_ind; auto.
+  destruct (is_less_exist x lst) eqn:E1.
+  { rewrite linear_pareto_exist; auto.
+    rewrite <- IHlst.
+    clear IHlst.
+    induction lst. 
+    { simpl in E1.
+      discriminate E1. }
+    apply is_exist_cons_alt in E1.
+    destruct E1.
+    { simpl.
+      clear IHlst.
+      rewrite is_better_out.
+      apply is_better_true in H.
+      generalize dependent a.
+      induction lst; auto.
+      ins.
+      destruct (better_destruct a0 a).
+      { rewrite H0.
+        rewrite <- IHlst at 2; auto. }
+      rewrite H0.
+      rewrite <-IHlst at 2; auto.
+      apply (is_better_tr3 a0); auto. }
+    admit. }
+  rewrite linear_pareto_not_exist; auto. 
+  destruct lst; auto.
+  rewrite <- app_comm_cons.
+  rewrite pick_best_des'.
+  rewrite IHlst.
+  apply pareto_inside in E1.
+  generalize dependent E1.
+  assert (pareto (t::lst) <> nil).
+  { apply pareto_not_nil; rels. } (* What can be done instead of rels? *)
+  generalize dependent H.
+  generalize (pareto (t :: lst)).
+  intros.
+  rewrite <- pick_best_des; auto.
+  generalize dependent E1.
+  clear.
+  ins.
+  destruct l; auto.
+  apply is_exist_not_cons_alt in E1.
+  desf.
+  destruct (is_less_than x t) eqn:E2.
+  { rewrite par_elem2_less; auto.
+    simpl.
+    generalize dependent t.
+    induction l.
+    { ins.
+      apply is_better_less; auto. }
+    intros.
+    apply is_exist_not_cons_alt in E0.
+    destruct E0.
+    destruct (is_less_than x a) eqn:E3.
+    { rewrite par_elem2_less; auto.
+      simpl.
+      apply IHl; auto.
+      { destruct (better_destruct t a).
+        { rewrite H1. apply E1. }
+        rewrite H1. apply H. }
+      destruct (better_destruct t a).
+      { rewrite H1. apply E2. }
+      rewrite H1. apply E3. }
+    rewrite par_elem2_not_less; auto.  
+Admitted.    
+
+Lemma pareto_nil_con lst :
+  pareto lst = nil -> lst = nil.
+Proof.
+  ins.
+  induction lst using rev_ind; auto.
+  destruct (is_less_exist x lst) eqn:E1.
+  { rewrite linear_pareto_exist in H; auto.
+    rewrite IHlst in E1; auto.
+    simpl in E1.
+    discriminate E1. }
+  rewrite linear_pareto_not_exist in H; auto.
+  assert (pareto_by_elem x (pareto lst) ++ [x] <> nil).
+  { generalize (pareto_by_elem x (pareto lst)).
+    ins.
+    clear.
+    destruct l.
+    all: simpl; rels. }
+  rels.
+Qed.
+  
+Lemma trivial_nil :
+  forall doc w, evaluatorTrivial w doc = nil -> evaluatorList w doc = nil.
+Proof.
+  ins.
+  assert (P: pareto (evaluatorTrivial w doc) = nil).
+  { rewrite H. apply pareto_nil. }
+  rewrite <- P.
+
+Admitted.       
+
+Lemma trivial_not_nil :
+  forall w doc, evaluatorTrivial w doc <> nil -> evaluatorList w doc <> nil.
+Admitted.
+
+(*---------MAIN Theorem-----------*)
+Theorem listEqTrivialProof :
+  forall doc width,
+    pretty evaluatorTrivial width doc = pretty evaluatorList width doc.
+Proof.
+  ins.
+  unfold pretty, best_to_str.
+  destruct (evaluatorTrivial width doc) eqn:E1.
+  { rewrite trivial_nil.
+    { reflexivity. }
+    apply E1. }
+  destruct (evaluatorList width doc) eqn:E2.
+  { assert (L:  evaluatorList width doc <> nil).
+    { apply trivial_not_nil.
+      rewrite E1. (* What tactic I need instead of rels? *)
+      rels. }
+    rewrite E2 in L.
+    rels. }
+  rewrite <- E1.
+  rewrite <- E2.
+  clear.
+  rewrite <- pareto_common.
+  rewrite pareto_filter_eq.
+  reflexivity.
+Qed.

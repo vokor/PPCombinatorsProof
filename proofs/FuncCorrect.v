@@ -14,3 +14,7 @@ Admitted.
 Lemma fill_correct n: func_correct (fun fs f : t => add_fill fs f n).
 Proof.
 Admitted.
+
+Lemma indent_correct w :  func_correct (fun _ a : t => indent' w a).
+Proof.
+Admitted.
