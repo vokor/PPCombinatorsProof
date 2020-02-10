@@ -763,6 +763,7 @@ Definition neighb_pareto (a: Doc) (b: Doc) (w: nat):=
   pareto (evaluatorTrivial w a) = (evaluatorList w a) /\
   pareto (evaluatorTrivial w b) = (evaluatorList w b).
 
+(*
 Lemma cross_general_exist_helper w f x y ys lst lst'
       (H: is_less_exist x lst = true)
       (F: func_correct f)
@@ -786,7 +787,7 @@ Proof.
       rewrite <- F1. auto. }
     rewrite (is_less_than_func_t_l _ _ x) in E1; auto. }
   auto.
-Qed.
+Qed. *)
 
 Lemma map_func_nil lst (f: t -> list t)
   (F: forall a, f a = nil) : concat (map f lst) = nil.
@@ -831,9 +832,7 @@ Proof.
     { red in F.
       desf.
       unfold flip.
-      rewrite <- F2.
-      rewrite H.
-      auto. }
+      rewrite F2; auto. }
     apply IHlst.
     apply Lem. }
   { rewrite forallb_exist_correct; auto. }
@@ -853,6 +852,7 @@ Proof.
   all: simpl; rewrite IHlst; reflexivity.
 Qed.                               
 
+(*
 Lemma add_general_not_exist lst x a f w
       (F: func_correct f)
       (H: is_less_exist x lst = false) :
@@ -868,10 +868,9 @@ Proof.
     rewrite <- F1.
     auto. }
   apply IHlst; auto.
-Qed.
+Qed. *)
 
 Lemma add_general_not_exist_elem l a b c f w
-      (F: func_correct f)
       (H: is_less_exist b (add_general f w l a) = false) :
   is_less_exist b (add_general f w (pareto_by_elem c l) a) = false.
 Proof.
@@ -896,6 +895,7 @@ Proof.
   apply IHl; auto.
 Qed.
 
+(*
 Lemma pareto_add_general lst a f w
       (F: func_correct f) :
   pareto (add_general f w (pareto lst) a) =
@@ -917,9 +917,7 @@ Proof.
         simpl.
         unfold flip.
         red in F. desf.
-        rewrite <- F1.
-        rewrite H.
-        auto. }
+        rewrite F1; auto. }
       desf.
       { simpl.
         rewrite IHlst; auto.
@@ -957,7 +955,7 @@ Proof.
           rewrite par_elem2_less_rev.
           rewrite <- pareto_by_elem_remove.
           apply IHl; auto.
-          all: rewrite <- F1; auto. }
+          all: rewrite F1; auto. }
         rewrite app_nil_r.
         apply IHl; auto. }
       rewrite par_elem2_not_less_rev; auto.
@@ -1389,6 +1387,8 @@ Proof.
   rewrite Lem.
   reflexivity.
 Qed.
+
+ *)
 
 Lemma pareto_beside a b w
       (H: neighb_pareto a b w) :
