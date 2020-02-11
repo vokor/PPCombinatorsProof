@@ -439,11 +439,9 @@ Proof.
   apply (F1 _ _ x) in H.
   unfold is_less_than in H.
   andb_split.
-  apply leb_complete in P.
-  apply leb_complete in H.
-  apply leb_complete in H1.
-  apply leb_complete in H2.
-  apply leb_complete in H0.
+  repeat match goal with
+         | H : (?X <=? ?Y) = true |- _ => apply leb_complete in H
+         end.
   apply Nat.leb_le.
   unfold total_width in *.  
   desf.
