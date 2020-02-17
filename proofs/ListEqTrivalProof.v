@@ -1414,17 +1414,12 @@ Proof.
   done.
 Qed.
 
-Lemma get_height_eq lst w :
-  get_min_height (pareto lst) w None = get_min_height lst w None.
-Proof.
-Admitted.
-
 Lemma get_height_none a lst w
       (H: (total_width a <=? w) = false) :
   get_min_height (lst ++ [a]) w None = get_min_height lst w None.
 Proof.
 Admitted.
-  
+      
 Lemma min_leb a b
       (H: a < b) : min b a = a.
 Proof.
@@ -1458,6 +1453,33 @@ Proof.
   
 Admitted.  
 
+Require Import Lia.
+
+Lemma get_height_to_none a b lst w
+      (H: total_width a <= w)
+      (P: height a <= height b) :
+  get_min_height (lst ++ [a]) w (Some (height b)) = get_min_height (lst ++ [a]) w None.
+Proof.
+  generalize dependent b.
+  generalize dependent a.
+  induction lst.
+  { ins.
+    desf.
+    { rewrite NPeano.Nat.min_r; auto. }
+    apply Nat.leb_gt in Heq.
+    lia. }
+  ins.
+  desf.
+  { destruct (height b <=? height a) eqn:E1.
+    { apply leb_complete in E1.
+      rewrite NPeano.Nat.min_l; auto.
+      repeat rewrite IHlst; auto.
+      apply (NPeano.Nat.le_trans _ (height b)); auto. }
+    apply leb_iff_conv in E1.
+    rewrite min_leb; auto. }
+  apply IHlst; auto.
+Qed.      
+
 Lemma get_height_exist a x w lst
       (H: is_less_exist x lst = true) :
   get_min_height lst w (Some (height a)) =
@@ -1476,9 +1498,196 @@ Proof.
     
   
 Admitted.
-  
-Require Import Lia.
 
+Lemma incl_height_none a lst w
+      (H: pick_best_list lst w ⊆ pick_best_list (lst ++ [a]) w) :
+  get_min_height (lst ++ [a]) w None = get_min_height lst w None.
+Proof.
+Admitted.
+
+Lemma pick_add_elems a lst lst' w
+      (I: lst ⊆ lst')
+      (H: pick_best_list lst w ⊆ pick_best_list lst' w) :
+  pick_best_list (lst ++ [a]) w ⊆ pick_best_list (lst' ++ [a]) w.
+Proof.
+Admitted.
+
+Lemma pick_is_less' a b lst w
+      (H: is_less_than a b = true) :
+  pick_best_list (a :: lst) w ⊆ pick_best_list ((a :: lst) ++ [b]) w.
+Proof.
+  simpls.
+  destruct (total_width a <=? w) eqn:E2.
+  { simpl.
+    rewrite get_height_less.
+    { desf.
+      { apply incl_cons.
+        { done. }
+        apply incl_tl.
+        rewrite filter_app.
+        apply incl_appl.
+        done. }
+      rewrite filter_app.
+      by apply incl_appl. }
+    unfold is_less_than in H.
+    andb_split.
+    apply leb_complete in H.
+    apply H. }
+  rewrite get_height_none.
+  { desf.
+    rewrite filter_app.
+    apply incl_appl.
+    done. }
+  unfold is_less_than in H.
+  andb_split.
+  apply leb_complete in H0.
+  apply leb_complete in H1.
+  apply leb_complete in H2.
+  apply leb_complete in H.
+  apply Nat.leb_gt.
+  apply Nat.leb_gt in E2.
+  unfold total_width in *.
+  desf.
+  simpls.
+  lia.
+Qed.
+
+(*
+Lemma height_some_none a b lst w
+      (H: total_width b <= w)
+      (K: height b <= height a)
+      (P: total_width a <= w) :
+  get_min_height (lst ++ [b]) w (Some (height a)) =
+  get_min_height (lst ++ [b]) w None.
+Proof.
+  induction lst.
+  { simpl.    
+    desf.
+    { rewrite NPeano.Nat.min_r; auto. }
+    apply Nat.leb_gt in Heq.
+    unfold total_width in *.
+    desf.
+    simpls.
+    lia. }
+  simpl.
+  desf.
+  apply leb_complete in Heq.
+  destruct (height a <=? height a0) eqn:E2.
+  { apply leb_complete in E2.
+    rewrite NPeano.Nat.min_l; auto.
+    repeat rewrite get_height_to_none; auto.
+    lia. }
+  apply Nat.leb_gt in E2.
+  rewrite min_leb; auto.
+Qed.  
+
+Lemma pick_is_less'' a b lst w
+      (H: is_less_than b a = true) :
+  pick_best_list (lst ++ [b]) w ⊆ pick_best_list ((a :: lst) ++ [b]) w.
+Proof.
+  unfold pick_best_list.
+  simpls.
+  destruct (total_width a <=? w) eqn:E1.
+  { simpl.
+    unfold is_less_than in H.
+    andb_split.
+    apply leb_complete in H0.
+    apply leb_complete in H1.
+    apply leb_complete in H2.
+    apply leb_complete in H.
+    apply leb_complete in E1.
+    rewrite get_height_to_none; auto.
+    { desf.
+      apply incl_tl.
+      done. }
+    unfold total_width in *.
+    desf.
+    simpls.
+    lia. }
+  desf.
+Qed.   *)      
+
+Lemma pareto_elem_height a lst w :
+      forall b, total_width b <= w ->
+  get_min_height (lst ++ [a]) w (Some (height b)) =
+  get_min_height (pareto_by_elem a lst ++ [a]) w (Some (height b)).
+Proof.
+  induction lst; auto.
+  destruct (is_less_than a a0) eqn:E1.
+  { intros.
+    rewrite par_elem2_less; auto.
+    unfold is_less_than in E1.
+    andb_split.
+    apply leb_complete in H0.
+    apply leb_complete in H1.
+    apply leb_complete in H2.
+    apply leb_complete in H3.
+    simpls.
+    desf.
+    destruct (height a0 <=? height b) eqn:E2.
+    { apply leb_complete in E2.
+      rewrite NPeano.Nat.min_r; auto.
+      rewrite <- IHlst; auto.
+      clear IHlst.
+      apply leb_complete in Heq.
+      repeat rewrite get_height_to_none; auto.
+      { unfold total_width in *.
+        desf.
+        simpls.
+        lia. }
+      { lia. }
+      unfold total_width in *.
+      desf.
+      simpls.
+      lia. }
+    apply Nat.leb_gt in E2.
+    rewrite min_l.
+    { apply IHlst; auto. }
+    lia.
+    apply IHlst; auto. }
+  intros.
+  rewrite par_elem2_not_less; auto.
+  simpls.
+  desf.
+  { apply leb_complete in Heq.
+    destruct (height b <=? height a0) eqn:E2.
+    { apply leb_complete in E2.
+      rewrite NPeano.Nat.min_l; auto. }
+    apply Nat.leb_gt in E2.
+    rewrite min_leb; auto. }
+  apply IHlst; auto.
+Qed.  
+
+Lemma pick_height_none lst a w :
+  get_min_height (pareto_by_elem a lst ++ [a]) w None =
+  get_min_height (lst ++ [a]) w None.
+Proof.
+  induction lst; auto.
+  destruct (is_less_than a a0) eqn:E1.
+  { rewrite par_elem2_less; auto.
+    simpls.
+    desf.
+    unfold is_less_than in E1.
+    andb_split.
+    apply leb_complete in H0.
+    apply leb_complete in H1.
+    apply leb_complete in H2.
+    apply leb_complete in H.
+    apply leb_complete in Heq.
+    rewrite get_height_to_none.
+    { apply IHlst. }
+    { unfold total_width in *.
+      desf.
+      simpls.
+      lia. }
+    lia. }
+  rewrite par_elem2_not_less; auto.
+  simpls.
+  desf.
+  apply leb_complete in Heq.
+  rewrite <- pareto_elem_height; auto.
+Qed.  
+  
 Lemma pick_pareto_incl lst w :
   pick_best_list (pareto lst) w ⊆ pick_best_list lst w.
 Proof.
@@ -1493,46 +1702,57 @@ Proof.
       discriminate E1. }
     apply is_exist_cons_alt in E1.
     desf.
-    { clear IHlst.
-      simpls.
-      destruct (total_width a <=? w) eqn:E2.
-      { simpl.
-        rewrite get_height_less.
-        { desf.
-          { apply incl_cons.
-          { done. }
-          apply incl_tl.
-          rewrite filter_app.
-          apply incl_appl.
-          done. }
-          rewrite filter_app.
-          by apply incl_appl. }        
-        admit.
-      }
-      rewrite get_height_none.
-      { desf.
-        rewrite filter_app.
-        apply incl_appl.
-        done. }
-      unfold is_less_than in E1.
-      andb_split.
-      apply leb_complete in H0.
-      apply leb_complete in H1.
-      apply leb_complete in H2.
-      apply leb_complete in H.
-      apply Nat.leb_gt.
-      apply Nat.leb_gt in E2.
-      unfold total_width in *.
-      desf.
-      simpls.
-      lia. }
+    { apply pick_is_less'.
+      apply E1. }
     simpls.
     destruct (total_width a <=? w) eqn:E2.
     { simpl.
       rewrite (get_height_exist _ x); auto.
       desf.
-      { admit. }
-Admitted.      
+      { rewrite filter_app.
+        apply incl_cons.
+        { done. }
+        apply incl_tl.
+        apply incl_appl.
+        done. }
+      rewrite filter_app.
+      apply incl_appl.
+      done. }
+    rewrite incl_height_none; auto.
+    desf.
+    rewrite filter_app.
+    apply incl_appl.
+    done. }
+  rewrite linear_pareto_not_exist; auto.
+  apply (pick_add_elems x) in IHlst.
+  { apply (incl_tran (m:= pick_best_list (pareto lst ++ [x]) w)).
+    { clear. 
+      generalize (pareto lst).
+      ins.
+      unfold pick_best_list.
+      rewrite pick_height_none.
+      desf.
+      rewrite <- Heq.
+      rewrite <- Heq1.
+      clear.
+      induction l. 
+      { done. }
+      destruct (is_less_than x a) eqn:E1.
+      { rewrite par_elem2_less; auto.
+        simpls.
+        desf.
+        apply incl_tl.
+        apply IHl. }
+      rewrite par_elem2_not_less; auto.
+      simpls.
+      desf.
+      apply incl_cons.
+      { done. }
+      apply incl_tl.
+      apply IHl. }
+    apply IHlst. }
+  apply pareto_incl.
+Qed.     
 
 Lemma best_remove lst lst' w :
    lst ⊆ lst' -> pick_best_list lst w ⊆ pick_best_list lst' w.
