@@ -208,6 +208,26 @@ Proof.
   rewrite (is_less_than_transitivity a0 a b) in H; auto.
 Qed.
 
+Require Import Lia.
+
+Lemma is_less_width a b w
+      (H: is_less_than a b = true)
+      (A: total_width b <=? w = true) : total_width a <=? w = true.
+Proof.
+  apply leb_complete in A.
+  apply Nat.leb_le.
+  unfold is_less_than in H.
+  andb_split.
+  apply leb_complete in H0.
+  apply leb_complete in H1.
+  apply leb_complete in H2.
+  apply leb_complete in H.
+  unfold total_width in *.
+  desf.
+  simpls.
+  lia.
+Qed.
+
 Lemma is_less_exist_destruct x lst lst' :
   is_less_exist x (lst ++ lst') = is_less_exist x lst || is_less_exist x lst'.
 Proof.
@@ -415,108 +435,10 @@ Proof.
   auto.
 Qed.
   
-Definition func_correct1 (f: t -> t -> t) :=
-  forall u v w, is_less_than u v = true -> is_less_than (f u w) (f v w) = true.
-
-Definition func_correct2 (f: t -> t -> t) :=
-  forall u v w, is_less_than u v -> is_less_than (f w u) (f w v) = true.
-
-Definition func_correct (f: t -> t -> t) :=
-  << F1: func_correct1 f >> /\
-  << F2: func_correct2 f >>.
+Definition fun_correct (f: t -> t -> t) :=
+  forall a b c d, is_less_than a b = true /\ is_less_than c d = true -> is_less_than (f a c) (f b d). 
 
 Require Import Lia.
-
-(* FIXME: EQUALS PROOFS *)
-Lemma is_less_than_func_t_l f a b x w
-      (F: func_correct f)
-      (H: is_less_than a b = true)
-      (P: (total_width (f b x) <=? w) = true) :
-  (total_width (f a x) <=? w) = true.
-Proof.
-  red in F.
-  desf.
-  apply (F1 _ _ x) in H.
-  unfold is_less_than in H.
-  andb_split.
-  repeat match goal with
-         | H : (?X <=? ?Y) = true |- _ => apply leb_complete in H
-         end.
-  apply Nat.leb_le.
-  unfold total_width in *.  
-  desf.
-  ins. (*what can be instead of ins? *)
-  lia.
-Qed.
-  
-Lemma is_less_than_func_t_r f a b x w
-      (F: func_correct f)
-      (H: is_less_than a b = true)
-      (P: (total_width (f x b) <=? w) = true) :
-  (total_width (f x a) <=? w) = true.
-Proof.
-  red in F.
-  desf.
-  apply (F2 _ _ x) in H.
-  unfold is_less_than in H.
-  andb_split.
-  apply leb_complete in P.
-  apply leb_complete in H.
-  apply leb_complete in H1.
-  apply leb_complete in H2.
-  apply leb_complete in H0.
-  apply Nat.leb_le.
-  unfold total_width in *.  
-  desf.
-  ins.
-  lia.
-Qed.
-
-Lemma is_less_than_func_f_r f a b x w
-      (F: func_correct f)
-      (H: is_less_than a b = true)
-      (P: (total_width (f x a) <=? w) = false) :
-  (total_width (f x b) <=? w) = false.
-Proof.
-  red in F.
-  desf.
-  apply (F2 _ _ x) in H.
-  unfold is_less_than in H.
-  andb_split.
-  apply NPeano.Nat.leb_gt in P.
-  apply leb_complete in H.
-  apply leb_complete in H1.
-  apply leb_complete in H2.
-  apply leb_complete in H0.
-  apply NPeano.Nat.leb_gt.
-  unfold total_width in *.  
-  desf.
-  ins.
-  lia.
-Qed.
-
-Lemma is_less_than_func_f_l f a b x w
-      (F: func_correct f)
-      (H: is_less_than a b = true)
-      (P: (total_width (f a x) <=? w) = false) :
-  (total_width (f b x) <=? w) = false.
-Proof.
-  red in F.
-  desf.
-  apply (F1 _ _ x) in H.
-  unfold is_less_than in H.
-  andb_split.
-  apply NPeano.Nat.leb_gt in P.
-  apply leb_complete in H.
-  apply leb_complete in H1.
-  apply leb_complete in H2.
-  apply leb_complete in H0.
-  apply NPeano.Nat.leb_gt.
-  unfold total_width in *.  
-  desf.
-  ins.
-  lia.
-Qed.
 
 
 Lemma leb_le_eq_true x y z :

@@ -7,7 +7,7 @@ Require Import Coq.ssr.ssrbool.
 Require Import ZArith Int.
 Require Import Coq.Bool.Bool.
 
-Lemma beside_correct : func_correct add_beside.
+Lemma beside_correct : fun_correct add_beside.
 Proof. (*
   unfold func_correct.
   split.
@@ -31,15 +31,15 @@ Proof. (*
       a *)
 Admitted.
 
-Lemma above_correct : func_correct add_above.
+Lemma above_correct : fun_correct add_above.
 Proof.
 Admitted.
 
 
-Lemma fill_correct n: func_correct (fun fs f : t => add_fill fs f n).
+Lemma fill_correct n: fun_correct (fun fs f : t => add_fill fs f n).
 Proof.
 Admitted.
 
-Lemma indent_correct w :  func_correct (fun _ a : t => indent' w a).
+Lemma indent_correct w :  fun_correct (fun _ a : t => indent' w a).
 Proof.
 Admitted.
