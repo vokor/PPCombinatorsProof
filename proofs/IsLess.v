@@ -237,6 +237,31 @@ Proof.
   apply orb_assoc.
 Qed.  
 
+Lemma is_exist_eq a lst :
+  is_less_exist a lst = true <-> exists b, In b lst /\ is_less_than b a = true.
+Proof.
+  split.
+  { ins.
+    induction lst.
+    { simpl in H.
+      discriminate H. }
+    apply is_exist_cons_alt in H.
+    simpls.
+    desf.
+    { exists a0; auto. }
+    assert (L: exists b : t, In b lst /\ is_less_than b a = true).
+    { apply IHlst; auto. }
+    desf.
+    exists b; auto. }
+  ins.
+  desf.
+  induction lst.
+  { done. }
+  apply is_exist_cons_alt.
+  simpls.
+  desf; auto.
+Qed.
+
 Fixpoint forallb_exist (lst: list t) (lst': list t) : bool :=
   match lst' with
   | nil       => true
@@ -436,7 +461,7 @@ Proof.
 Qed.
   
 Definition fun_correct (f: t -> t -> t) :=
-  forall a b c d, is_less_than a b = true /\ is_less_than c d = true -> is_less_than (f a c) (f b d). 
+  forall a b c d, is_less_than a b = true /\ is_less_than c d = true -> is_less_than (f a c) (f b d) = true. 
 
 Require Import Lia.
 

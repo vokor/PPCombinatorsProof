@@ -786,31 +786,31 @@ Proof.
   auto.
 Qed.
 
-(*
-Lemma cross_general_exist_helper w f x y ys lst lst'
-      (H: is_less_exist x lst = true)
-      (F: func_correct f)
-      (T: (total_width (f x y) <=? w) = true) :
-  
-   is_less_exist (f x y)
-     (filter (fun f0 : t => total_width f0 <=? w)
-             (concat (map (fun f0 : t => map (f f0) (lst' ++ y :: ys)) lst))) = true.
+Lemma pareto_less_elem a lst :
+  In a lst -> is_less_exist a (pareto lst) = true.
 Proof.
-  induction lst. auto.
-  simpl.
-  rewrite map_app.
-  repeat rewrite filter_app.
-  repeat rewrite is_exist_cons_all.
-  simpl.
-  apply is_exist_cons_alt in H.
-  destruct H.
-  { destruct (total_width (f a y) <=? w) eqn:E1.
-    { rewrite is_exist_cons_alt.
-      red in F. desf.
-      rewrite <- F1. auto. }
-    rewrite (is_less_than_func_t_l _ _ x) in E1; auto. }
+  induction lst using rev_ind; auto.
+  ins.
+  apply in_app_or in H.
+  simpls.
+  desf.
+  { destruct (is_less_exist x lst) eqn:E1.
+    { rewrite linear_pareto_exist; auto. }
+    rewrite linear_pareto_not_exist; auto.
+    apply is_exist_cons_all.
+    rewrite is_exist_cons_alt.
+    destruct (is_less_than x a) eqn:E2; auto.
+    rewrite is_less_exist_pareto_elem; auto. }
+  clear IHlst.
+  destruct (is_less_exist a lst) eqn:E1.
+  { rewrite linear_pareto_exist; auto.
+    rewrite pareto_inside; auto. }
+  rewrite linear_pareto_not_exist; auto.
+  apply is_exist_cons_all.
+  rewrite is_exist_cons_alt.
+  rewrite is_less_than_reflexivity.
   auto.
-Qed. *)
+Qed.  
 
 Lemma map_func_nil lst (f: t -> list t)
   (F: forall a, f a = nil) : concat (map f lst) = nil.
@@ -846,24 +846,6 @@ Proof.
   all: simpl; rewrite IHlst; reflexivity.
 Qed.                               
 
-(*
-Lemma add_general_not_exist lst x a f w
-      (F: func_correct f)
-      (H: is_less_exist x lst = false) :
-  is_less_exist (f x a) (add_general f w lst a) = false.
-Proof.
-  induction lst; auto.
-  red in F.
-  apply is_exist_not_cons_alt in H.
-  desf.
-  simpl.
-  destruct (total_width (f a0 a) <=? w) eqn:E3.
-  { apply is_exist_not_cons_alt.
-    rewrite <- F1.
-    auto. }
-  apply IHlst; auto.
-Qed. *)
-
 Lemma add_general_not_exist_elem l a b c f w
       (H: is_less_exist b (add_general f w l a) = false) :
   is_less_exist b (add_general f w (pareto_by_elem c l) a) = false.
@@ -888,183 +870,6 @@ Proof.
   rewrite E6.
   apply IHl; auto.
 Qed.
-
-(*
-Lemma pareto_add_general lst a f w
-      (F: func_correct f) :
-  pareto (add_general f w (pareto lst) a) =
-  pareto (add_general f w lst a).
-Proof.
-  induction lst using rev_ind; auto.
-  rewrite add_general_rev.
-  destruct (is_less_exist x lst) eqn:E1.
-  { rewrite linear_pareto_exist; auto.
-    destruct (total_width (f x a) <=? w) eqn:E2.
-    { rewrite linear_pareto_exist.
-      { apply IHlst. }
-      clear IHlst.
-      induction lst; auto.
-      simpl.
-      apply is_exist_cons_alt in E1.
-      destruct E1.
-      { rewrite (is_less_than_func_t_l f a0 x); auto.
-        simpl.
-        unfold flip.
-        red in F. desf.
-        rewrite F1; auto. }
-      desf.
-      { simpl.
-        rewrite IHlst; auto.
-        apply orb_true_r. }
-      apply IHlst.
-      reflexivity. }
-    rewrite app_nil_r.
-    apply IHlst. }
-  rewrite linear_pareto_not_exist; auto.
-  rewrite add_general_rev.
-  destruct (total_width (f x a) <=? w) eqn:E2.
-  { repeat rewrite linear_pareto_not_exist; auto.
-    { rewrite <- IHlst.
-      apply app_inv_all.
-      clear IHlst.
-      apply pareto_inside in E1.
-      generalize E1.
-      clear E1.
-      set (l := pareto lst).
-      generalize dependent l.
-      ins.
-      induction l using rev_ind; auto. 
-      apply is_exist_not_cons_all in E1.
-      simpl in E1. unfold flip in E1.
-      rewrite orb_false_r in E1.
-      destruct E1 as [A B].
-      destruct (is_less_than x x0) eqn:E1.
-      { rewrite par_elem2_less_rev; auto.
-        rewrite add_general_rev.
-        destruct (total_width (f x0 a) <=? w) eqn:E4.
-        { destruct (is_less_exist (f x0 a) (add_general f w l a)) eqn:E5.
-          { rewrite linear_pareto_exist; auto. }
-          rewrite linear_pareto_not_exist; auto.
-          red in F. desf.
-          rewrite par_elem2_less_rev.
-          rewrite <- pareto_by_elem_remove.
-          apply IHl; auto.
-          all: rewrite F1; auto. }
-        rewrite app_nil_r.
-        apply IHl; auto. }
-      rewrite par_elem2_not_less_rev; auto.
-      repeat rewrite add_general_rev.
-      destruct (total_width (f x0 a) <=? w) eqn:E4.
-      + destruct (is_less_exist (f x0 a) (add_general f w l a)) eqn:E5.
-        { repeat rewrite linear_pareto_exist; auto.
-          clear IHl. clear A.
-          induction l; auto.
-          simpl in E5.
-          destruct (is_less_than x a0) eqn:E3.
-          { rewrite par_elem2_less; auto.
-            destruct (total_width (f a0 a) <=? w) eqn:E6.
-            { apply is_exist_cons_alt in E5.
-              red in F.
-              desf.
-              { rewrite <- F1 in E5.
-                rewrite (is_less_than_transitivity x a0 x0) in E1; auto. }
-              apply IHl; auto. }
-            apply IHl.
-            apply E5. }
-          rewrite par_elem2_not_less; auto.
-          simpl.
-          destruct (total_width (f a0 a) <=? w) eqn:E6.
-          { apply is_exist_cons_alt in E5.
-            desf.
-            { apply is_exist_cons_alt.
-              rewrite E5.
-              auto. }
-            apply is_exist_cons_alt.
-            rewrite IHl; auto. }
-          apply IHl.
-          apply E5. }
-        repeat rewrite linear_pareto_not_exist; auto.
-        { red in F. desf.
-          repeat rewrite par_elem2_not_less_rev.
-          { rewrite pareto_by_elem_swap.
-            rewrite IHl; auto.
-            rewrite pareto_by_elem_swap.
-            reflexivity. }
-          all: rewrite <- F1; apply E1. }
-        apply add_general_not_exist_elem; auto.
-      + repeat rewrite app_nil_r.
-        apply IHl.
-        apply A. }
-    { apply add_general_not_exist; auto. }
-    apply add_general_not_exist_elem; auto.
-    apply add_general_not_exist; auto.
-    apply pareto_inside.
-    apply E1. }
-  repeat rewrite app_nil_r.
-  rewrite <- IHlst.
-  clear IHlst.
-  generalize (pareto lst).
-  intro.
-  induction l using rev_ind; auto.
-  rewrite add_general_rev.
-  destruct (is_less_than x x0) eqn:E3.
-  { rewrite par_elem2_less_rev; auto.
-    simpl.
-    rewrite (is_less_than_func_f_l f x x0); auto.
-    rewrite app_nil_r.
-    apply IHl. }
-  clear E1.
-  rewrite par_elem2_not_less_rev; auto.
-  rewrite add_general_rev.
-  red in F. desf.
-  { destruct (is_less_exist (f x0 a) (add_general f w l a)) eqn:E5.
-    + repeat rewrite linear_pareto_exist; auto.
-      clear IHl.
-      induction l; auto.
-      simpl in E5.
-      destruct (total_width (f a0 a) <=? w) eqn:E1.
-      { apply is_exist_cons_alt in E5.
-        destruct (is_less_than x a0) eqn:E4.
-        { rewrite par_elem2_less; auto.
-          desf.
-          { rewrite <- F1 in E5.
-            rewrite (is_less_than_transitivity x a0 x0) in E3; auto. }
-          apply IHl; auto. }
-        rewrite par_elem2_not_less; auto.
-        simpl.
-        rewrite E1.
-        apply is_exist_cons_alt.
-        destruct E5; auto. }
-      destruct (is_less_than x a0) eqn:E4.
-      { rewrite par_elem2_less; auto. }
-      rewrite par_elem2_not_less; auto.
-      simpl.
-      rewrite E1.
-      apply IHl; auto.
-    + repeat rewrite linear_pareto_not_exist; auto.
-      { rewrite IHl.
-        reflexivity. }
-      apply add_general_not_exist_elem; auto.
-      red. auto. }
-  repeat rewrite app_nil_r.
-  apply IHl.
-Qed.
-
-Lemma remove_pareto_fst lst lst' f w
-      (F: func_correct f) :
-  cross_general f w (pareto lst) lst' =
-  cross_general f w lst lst'.
-Proof.
-  unfold cross_general.
-  induction lst'.
-  { simpl. reflexivity. }
-  simpl. 
-  rewrite pareto_linear, IHlst', pareto_add_general.
-  { rewrite <- pareto_linear.
-    reflexivity. }
-  auto.
-Qed.  
- *)
 
 Lemma cross_general_eq w f lst lst' :
   pareto (FormatTrivial.cross_general w f lst lst') =
@@ -1097,265 +902,6 @@ Proof.
   rewrite H.
   reflexivity.
 Qed.
-
-(*
-Lemma remove_pareto lst lst' f w
-      (F: func_correct f) :
-  cross_general f w (pareto lst) (pareto lst') =
-  cross_general f w lst lst'.
-Proof. 
-  rewrite remove_pareto_fst; auto.
-  unfold cross_general.
-  induction lst' using rev_ind; auto.
-  destruct (is_less_exist x lst') eqn:E1.
-  { rewrite linear_pareto_exist; auto.
-    rewrite map_app.
-    simpl.
-    rewrite IHlst'. 
-    induction lst' as [|x0 lst' _] using rev_ind.
-    { simpl in E1.
-      discriminate E1. }
-    clear IHlst'.
-    rewrite map_app. simpl.
-    repeat rewrite concat_app.
-    simpl.
-    repeat rewrite app_nil_r.
-    rewrite pareto_list_remove with
-        (lst:= concat (map (add_general f w lst) lst') ++ add_general f w lst x0); auto.
-    apply is_exist_cons_all in E1.
-    destruct E1.
-    { apply forallb_exist_rem_list_l.
-      induction lst'; auto.
-      simpl.
-      apply is_exist_cons_alt in H.
-      destruct H.
-      { apply forallb_exist_rem_list_l.
-        apply forallb_add_gener_true; auto. }
-      apply forallb_exist_rem_list_r.
-      apply IHlst'; auto. }
-    simpl in H.
-    unfold flip in H.
-    rewrite orb_false_r in H.
-    apply forallb_exist_rem_list_r.
-    apply forallb_add_gener_true; auto. }
-  rewrite linear_pareto_not_exist; auto.
-  repeat rewrite map_app, concat_app.
-  simpl.
-  rewrite app_nil_r.
-  symmetry.
-  rewrite pareto_linear_fst.
-  rewrite <- IHlst'.
-  rewrite <- pareto_linear_fst.
-  clear IHlst'.
-  assert (P: is_less_exist x (pareto lst') = false).
-  { apply pareto_inside in E1; auto. }
-  clear E1.
-  generalize P.
-  generalize (pareto lst').
-  clear P.
-  ins.
-  rewrite <- (app_nil_l (add_general f w lst x)).
-  set (mas := nil).
-  generalize dependent mas.
-  induction l using rev_ind; auto.
-  ins.
-  apply is_exist_not_cons_all in P.
-  simpl in P. unfold flip in P.
-  rewrite orb_false_r in P.
-  destruct P as [A B].
-  rewrite map_app, concat_app.
-  simpl. rewrite app_nil_r.
-  rewrite <- app_assoc.
-  destruct (is_less_than x x0) eqn:E1.
-  { rewrite par_elem2_less_rev; auto.
-    assert (Lem:  pareto (concat (map (add_general f w lst) l) ++
-                                 add_general f w lst x0 ++ mas ++ add_general f w lst x) =
-                  pareto (concat (map (add_general f w lst) l) ++ mas ++ add_general f w lst x)).
-    { clear IHl.
-      generalize (concat (map (add_general f w lst) l)).
-      generalize dependent mas.
-      induction lst; auto.
-      ins.
-      assert (Br: forall (a:list t) b c, a ++ b::c = (a ++ [b]) ++ c).
-      { ins.
-        rewrite <- app_assoc.
-        simpl.
-        reflexivity. }
-      destruct (total_width (f a x0) <=? w) eqn:E2.
-      { rewrite (is_less_than_func_t_r _ x x0); auto.
-        simpl.
-        rewrite pareto_linear.
-        rewrite app_assoc.
-        rewrite linear_pareto_exist_fst.
-        { rewrite <- pareto_linear.
-          rewrite <- app_assoc.
-          rewrite Br.
-          apply IHlst. }
-        all: red in F; desf; rewrite <- F2; auto. }
-      destruct (total_width (f a x) <=? w).
-      { rewrite Br. apply IHlst. }
-      apply IHlst. }
-    rewrite Lem.
-    apply IHl.
-    apply A. }
-  rewrite par_elem2_not_less_rev; auto.
-  rewrite map_app, concat_app.
-  simpl. rewrite app_nil_r.
-  rewrite <- app_assoc.
-  assert (Lem: forall (q: list t) s t h, q ++ s ++ t ++ h = q ++ (s ++ t) ++ h).
-  { destruct q.
-    { simpl. apply app_assoc. }
-    simpl. ins. repeat rewrite app_assoc. reflexivity. }
-  repeat rewrite Lem.
-  apply IHl; auto.
-Qed.
-
-Lemma pareto_text :
-  forall x,
-    pareto (FormatTrivial.constructDoc x) = FormatList.constructDoc x.
-Proof.
-  intros x.
-  unfold FormatTrivial.constructDoc.
-  unfold FormatList.constructDoc.
-  reflexivity.
-Qed.
-
-Definition indent_tuple sh := fun _ a : t => indent' sh a.
-
-Lemma indent_eq_tuple a sh w :
-  (total_width (indent' sh a) <=? w) = (total_width (indent_tuple sh a a) <=? w).
-Proof.
-  unfold indent_tuple.
-  reflexivity.
-Qed.
-
-Lemma tuple_indent_correct :
-  forall sh, func_correct (indent_tuple sh).
-Proof.
-  unfold indent_tuple.
-  apply indent_correct.
-Qed.
-  
-Lemma indent_exist x lst sh w
-     (H1: is_less_exist x lst = true)
-     (H2: (total_width (indent' sh x) <=? w) = true) :
-  is_less_exist (indent' sh x) (indentDoc w sh lst) = true.
-Proof.
-  induction lst; auto.
-  simpl.
-  apply is_exist_cons_alt in H1.
-  rewrite indent_eq_tuple in H2.
-  desf.
-  { apply is_exist_cons_alt.
-    rewrite <- indent'_linear.
-    rewrite H1; auto. }
-  { rewrite indent_eq_tuple in Heq.
-    rewrite (is_less_than_func_t_r _ a x) in Heq; auto.
-    apply tuple_indent_correct. }
-  { simpl.
-    rewrite IHlst; auto.
-    apply orb_true_r. }
-  apply IHlst.
-  reflexivity.
-Qed.    
-
-Lemma indent_pareto_by_elem lst w sh x:
-  indentDoc w sh (pareto_by_elem x lst) = pareto_by_elem (indent' sh x) (indentDoc w sh lst).
-Proof.
-  induction lst; auto.
-  destruct (is_less_than x a) eqn:E1.
-  { rewrite par_elem2_less; auto.
-    simpl.
-    destruct (total_width (indent' sh a) <=? w).
-    { rewrite par_elem2_less.
-      { apply IHlst. }
-      rewrite <- indent'_linear.
-      apply E1. }
-    apply IHlst. }
-  rewrite par_elem2_not_less; auto.
-  simpl.
-  destruct (total_width (indent' sh a) <=? w).
-  { rewrite par_elem2_not_less.
-    { rewrite IHlst.
-      reflexivity. }
-    rewrite <- indent'_linear.
-    apply E1. }
-  apply IHlst.
-Qed.  
-
-Lemma indentDoc_pareto_by_elem lst w sh x
-      (H: (total_width (indent' sh x) <=? w) = false) :
-  pareto_by_elem (indent' sh x) (indentDoc w sh lst) = indentDoc w sh lst.
-Proof.
-  rewrite <- indent_pareto_by_elem.
-  induction lst; auto.
-  destruct (is_less_than x a) eqn:E1.
-  { rewrite par_elem2_less; auto.
-    rewrite indent_eq_tuple in H.
-    simpl.
-    rewrite indent_eq_tuple.
-    rewrite (is_less_than_func_f_r _ x a); auto.
-    apply tuple_indent_correct. }
-  rewrite par_elem2_not_less; auto.
-  simpl.
-  desf.
-  rewrite IHlst.
-  reflexivity.
-Qed.  
-
-Lemma indent_with_pareto w sh lst :
-  indentDoc w sh (pareto lst) = pareto (indentDoc w sh lst).
-Proof.
-  assert (Rev_destruct: forall a l, indentDoc w sh (l ++ [a]) =
-                                    indentDoc w sh l ++ (if total_width (indent' sh a) <=? w then indent' sh a::nil else nil)).
-  {
-    ins.
-    induction l; auto.
-    simpl.
-    destruct (total_width (indent' sh a0) <=? w).
-    { simpl.
-      rewrite IHl.
-      reflexivity. }
-    apply IHl. } 
-  assert (F: func_correct (fun _ a : t => indent' w a)).
-  { apply indent_correct. }
-  red in F.
-  desf.
-  induction lst using rev_ind; auto.
-  destruct (is_less_exist x lst) eqn:E1.
-  { rewrite linear_pareto_exist; auto.
-    rewrite Rev_destruct.
-    destruct (total_width (indent' sh x) <=? w) eqn:E2.
-    { destruct (is_less_exist (indent' sh x) (indentDoc w sh lst)) eqn:E3.
-      { rewrite linear_pareto_exist; auto. }
-      rewrite indent_exist in E3; auto.
-      discriminate E3. }
-    rewrite app_nil_r.
-    apply IHlst. }
-  rewrite linear_pareto_not_exist; auto.
-  repeat rewrite Rev_destruct.
-  destruct (total_width (indent' sh x) <=? w) eqn:E2.
-  { rewrite indent_pareto_by_elem.
-    rewrite linear_pareto_not_exist.
-    { rewrite IHlst.
-      reflexivity. }
-    generalize E1.
-    clear.
-    ins.
-    induction lst; auto.
-    apply is_exist_not_cons_alt in E1.
-    simpl.
-    desf.
-    { apply is_exist_not_cons_alt.
-      rewrite <- indent'_linear.
-      rewrite E1; auto. }
-    apply IHlst.
-    reflexivity. }
-  repeat rewrite app_nil_r.
-  rewrite indent_pareto_by_elem.
-  rewrite <- IHlst.
-  rewrite indentDoc_pareto_by_elem; auto.
-Qed. *)
 
 Notation "a ⊆ b" := (incl a b)  (at level 60).
 
@@ -1407,12 +953,6 @@ Proof.
   apply IHlst.
   done.
 Qed.
-
-Lemma get_height_none a lst w
-      (H: (total_width a <=? w) = false) :
-  get_min_height (lst ++ [a]) w None = get_min_height lst w None.
-Proof.
-Admitted.
       
 Lemma min_leb a b
       (H: a < b) : min b a = a.
@@ -1444,16 +984,10 @@ Proof.
     apply IHlst.
     apply Nat.lt_le_incl.
     apply (Nat.lt_le_trans _ (height a0)); auto. }
-  
-Admitted.  
+  apply IHlst; auto.
+Qed.    
 
 Require Import Lia.
-
-Lemma pick_height_link lst lst' w
-      (H: pick_best_list lst w ⊆ pick_best_list lst' w) :
-  get_min_height lst w None = get_min_height lst' w None.
-Proof.
-Admitted.
 
 Lemma get_height_to_none a b lst w
       (H: total_width a <= w)
@@ -1480,37 +1014,105 @@ Proof.
   apply IHlst; auto.
 Qed.      
 
+Lemma get_height_none a lst w
+      (H: (total_width a <=? w) = false) :
+  forall (o: option nat),
+  get_min_height (lst ++ [a]) w o = get_min_height lst w o.
+Proof.
+  induction lst.
+  { simpls.
+    desf. }
+  ins.
+  desf.
+Qed.
+
 Lemma get_height_exist a x w lst
       (H: is_less_exist x lst = true) :
   get_min_height lst w (Some (height a)) =
   get_min_height (lst ++ [x]) w (Some (height a)).
 Proof.
-  induction lst.
-  { simpl in H.
-    discriminate H. }
-  apply is_exist_cons_alt in H.
+  apply is_exist_eq in H.
   desf.
-  { simpls.
-    destruct (total_width a0 <=? w) eqn:E1.
-    { 
-    
+  generalize dependent b.
+  generalize dependent a.
+  induction lst.
+  { done. }
+  ins.
+  unfold is_less_than in H0.
+  andb_split.
+  apply leb_complete in H0.
+  apply leb_complete in H1.
+  apply leb_complete in H2.
+  apply leb_complete in H3.
+  desf.
+  { destruct (height a0 <=? height b) eqn:E1.
+    { apply leb_complete in E1.
+      rewrite Min.min_l; auto.
+      rewrite get_height_less.
+      { reflexivity. }
+      lia. }
+    apply Nat.leb_gt in E1.
+    rewrite min_leb; auto.
+    rewrite get_height_less; auto. }
+  { rewrite get_height_none; auto.
+    apply Nat.leb_gt.
+    apply Nat.leb_gt in Heq.
+    unfold total_width in *.
+    desf.
+    simpls.
+    lia. }
+  { destruct (height a0 <=? height a) eqn:E1.
+    { apply leb_complete in E1.
+      rewrite Min.min_l; auto.
+      apply (IHlst _ b); auto.
+      unfold is_less_than.
+      apply andb_true_iff; split.
+      apply andb_true_iff; split.
+      apply andb_true_iff; split.
+      all: apply NPeano.Nat.leb_le; auto. }
+    apply Nat.leb_gt in E1.
+    rewrite min_leb; auto.
+    apply (IHlst _ b); auto.
+    unfold is_less_than.
+    apply andb_true_iff; split.
+    apply andb_true_iff; split.
+    apply andb_true_iff; split.
+    all: apply NPeano.Nat.leb_le; auto. }
+  apply (IHlst _ b); auto.
+  unfold is_less_than.
+  apply andb_true_iff; split.
+  apply andb_true_iff; split.
+  apply andb_true_iff; split.
+  all: apply NPeano.Nat.leb_le; auto.
+Qed.    
 
-    
-  
-Admitted.
-
-Lemma incl_height_none a lst w
-      (H: pick_best_list lst w ⊆ pick_best_list (lst ++ [a]) w) :
-  get_min_height (lst ++ [a]) w None = get_min_height lst w None.
+Lemma height_some_none a b lst w
+      (H: total_width b <= w)
+      (K: height b <= height a)
+      (P: total_width a <= w) :
+  get_min_height (lst ++ [b]) w (Some (height a)) =
+  get_min_height (lst ++ [b]) w None.
 Proof.
-Admitted.
-
-Lemma pick_add_elems a lst lst' w
-      (I: lst ⊆ lst')
-      (H: pick_best_list lst w ⊆ pick_best_list lst' w) :
-  pick_best_list (lst ++ [a]) w ⊆ pick_best_list (lst' ++ [a]) w.
-Proof.
-Admitted.
+  induction lst.
+  { simpl.    
+    desf.
+    { rewrite NPeano.Nat.min_r; auto. }
+    apply Nat.leb_gt in Heq.
+    unfold total_width in *.
+    desf.
+    simpls.
+    lia. }
+  simpl.
+  desf.
+  apply leb_complete in Heq.
+  destruct (height a <=? height a0) eqn:E2.
+  { apply leb_complete in E2.
+    rewrite NPeano.Nat.min_l; auto.
+    repeat rewrite get_height_to_none; auto.
+    lia. }
+  apply Nat.leb_gt in E2.
+  rewrite min_leb; auto.
+Qed. 
 
 Lemma pick_is_less' a b lst w
       (H: is_less_than a b = true) :
@@ -1552,35 +1154,6 @@ Proof.
   lia.
 Qed.
 
-(*
-Lemma height_some_none a b lst w
-      (H: total_width b <= w)
-      (K: height b <= height a)
-      (P: total_width a <= w) :
-  get_min_height (lst ++ [b]) w (Some (height a)) =
-  get_min_height (lst ++ [b]) w None.
-Proof.
-  induction lst.
-  { simpl.    
-    desf.
-    { rewrite NPeano.Nat.min_r; auto. }
-    apply Nat.leb_gt in Heq.
-    unfold total_width in *.
-    desf.
-    simpls.
-    lia. }
-  simpl.
-  desf.
-  apply leb_complete in Heq.
-  destruct (height a <=? height a0) eqn:E2.
-  { apply leb_complete in E2.
-    rewrite NPeano.Nat.min_l; auto.
-    repeat rewrite get_height_to_none; auto.
-    lia. }
-  apply Nat.leb_gt in E2.
-  rewrite min_leb; auto.
-Qed.  
-
 Lemma pick_is_less'' a b lst w
       (H: is_less_than b a = true) :
   pick_best_list (lst ++ [b]) w ⊆ pick_best_list ((a :: lst) ++ [b]) w.
@@ -1605,7 +1178,7 @@ Proof.
     simpls.
     lia. }
   desf.
-Qed.   *)      
+Qed.
 
 Lemma pareto_elem_height a lst w :
       forall b, total_width b <= w ->
@@ -1686,73 +1259,7 @@ Proof.
   desf.
   apply leb_complete in Heq.
   rewrite <- pareto_elem_height; auto.
-Qed.  
-  
-Lemma pick_pareto_incl lst w :
-  pick_best_list (pareto lst) w ⊆ pick_best_list lst w.
-Proof.
-  induction lst using rev_ind; simpls.
-  destruct (is_less_exist x lst) eqn:E1.
-  { rewrite linear_pareto_exist; auto.
-    apply (incl_tran (m:= pick_best_list lst w)).
-    { apply IHlst. }
-    clear IHlst.
-    induction lst.
-    { simpl in E1.
-      discriminate E1. }
-    apply is_exist_cons_alt in E1.
-    desf.
-    { apply pick_is_less'.
-      apply E1. }
-    simpls.
-    destruct (total_width a <=? w) eqn:E2.
-    { simpl.
-      rewrite (get_height_exist _ x); auto.
-      desf.
-      { rewrite filter_app.
-        apply incl_cons.
-        { done. }
-        apply incl_tl.
-        apply incl_appl.
-        done. }
-      rewrite filter_app.
-      apply incl_appl.
-      done. }
-    rewrite incl_height_none; auto.
-    desf.
-    rewrite filter_app.
-    apply incl_appl.
-    done. }
-  rewrite linear_pareto_not_exist; auto.
-  apply (pick_add_elems x) in IHlst.
-  { apply (incl_tran (m:= pick_best_list (pareto lst ++ [x]) w)).
-    { clear. 
-      generalize (pareto lst).
-      ins.
-      unfold pick_best_list.
-      rewrite pick_height_none.
-      desf.
-      rewrite <- Heq.
-      rewrite <- Heq1.
-      clear.
-      induction l. 
-      { done. }
-      destruct (is_less_than x a) eqn:E1.
-      { rewrite par_elem2_less; auto.
-        simpls.
-        desf.
-        apply incl_tl.
-        apply IHl. }
-      rewrite par_elem2_not_less; auto.
-      simpls.
-      desf.
-      apply incl_cons.
-      { done. }
-      apply incl_tl.
-      apply IHl. }
-    apply IHlst. }
-  apply pareto_incl.
-Qed.     
+Qed.    
 
 Lemma elem_in_pick n a lst w
       (H: total_width a <= w)
@@ -1863,7 +1370,7 @@ Lemma best_remove lst lst' w
    lst ⊆ lst' -> pick_best_list lst w ⊆ pick_best_list lst' w.
 Proof.
   ins.
-  unfold pick_best_list at 1.
+  unfold pick_best_list at 1. 
   induction lst; simpls.
   desf.
   { apply incl_cons.
@@ -1945,47 +1452,49 @@ Proof.
       done. }
     apply IHl0; auto. }
   lia.
-Qed. 
+Qed.
+
+Lemma pick_height_link lst x w
+      (N: is_less_exist x lst = true) :
+  get_min_height (lst ++ [x]) w None = get_min_height lst w None.
+Proof.
+  induction lst.
+  { simpls. }
+  apply is_exist_cons_alt in N.
+  desf.
+  { clear IHlst.
+    simpls.
+    unfold is_less_than in N.
+    andb_split.
+    apply leb_complete in H0.
+    apply leb_complete in H1.
+    apply leb_complete in H2.
+    apply leb_complete in H.
+    desf.
+    { rewrite get_height_less.
+      { reflexivity. }
+      apply H. }
+    rewrite get_height_none.
+    { reflexivity. }
+    apply Nat.leb_gt in Heq.
+    apply Nat.leb_gt.
+    unfold total_width in *.
+    desf.
+    simpls.
+    lia. }
+  simpls.
+  desf.
+  { symmetry.
+    apply get_height_exist; auto. }
+  apply IHlst; auto.    
+Qed.
 
 
 Lemma cross_general_nil f w lst :
   FormatTrivial.cross_general w f nil lst = nil.
 Proof.
   induction lst; auto.
-Qed.
-
-Lemma destruct_height lst lst' f w :
-  exists a b: t, get_min_height lst w None = Some (height a) /\
-                           get_min_height lst' w None = Some (height b) ->
-  get_min_height (FormatTrivial.cross_general w f lst lst') w None = Some (height (f a b)).
-Proof.
-  
-Admitted.
-
-Lemma height_linear lst lst' w
-      (H: get_min_height lst w None = None)
-      (H1: get_min_height lst' w None = None) :
-  get_min_height (lst ++ lst') w None = None.
-Proof.
-Admitted.
-
-Lemma height_none lst lst' f w :
-  get_min_height lst w None = None \/ get_min_height lst' w None = None ->
-  get_min_height (FormatTrivial.cross_general w f lst lst') w None = None.
-Proof.
-  ins.
-  desf.
-  { induction lst'; simpls.
-    unfold FormatTrivial.cross_general.
-    simpl.
-    rewrite filter_app.
-    apply height_linear.
-    { clear IHlst'.
-      destruct lst; auto.
-      simpl.
-      desf.
-      assert (L: forall b l, In (f b a) l -> get_min_height l w None = None).
-Admitted.   
+Qed. 
 
 Lemma height_values lst w :
   get_min_height lst w None = None \/
@@ -2070,47 +1579,69 @@ Proof.
 Qed.      
 
 Lemma height_remove_val n m lst w
-      (H: get_min_height lst w (Some n) = Some m)
-      (I: m < n) : get_min_height lst w None = Some m.
+      (I: m < n) : get_min_height lst w (Some n) = Some m <-> get_min_height lst w None = Some m.
 Proof.
-  generalize dependent n.
-  induction lst.
-  { ins.
-    inversion H.
-    lia. }
-  ins.
-  desf.
-  { destruct (n <=? height a) eqn:E1.
-    { apply leb_complete in E1.
-      rewrite Min.min_l in H; auto.
-      clear IHlst.
-      clear Heq.
-      generalize dependent n.
-      generalize dependent (height a).
-      induction lst.
-      { ins.
-        inversion H.
-        lia. }
-      ins.
-      desf.
-      { destruct (n <=? height a0) eqn:E2.
-        { apply leb_complete in E2.
-          rewrite Min.min_l; auto.
-          rewrite Min.min_l in H; auto.
-          { apply (IHlst _ n0); auto. }
+  assert (L: forall n m lst w, m < n /\ get_min_height lst w (Some n) = Some m -> get_min_height lst w None = Some m).
+  { clear.
+    ins.
+    destruct H as [H0 H].
+    generalize dependent n.
+    induction lst.
+    { ins.
+      inversion H.
+      lia. }
+    ins.
+    desf.
+    { destruct (n <=? height a) eqn:E1.
+      { apply leb_complete in E1.
+        rewrite Min.min_l in H; auto.
+        clear IHlst.
+        clear Heq.
+        generalize dependent n.
+        generalize dependent (height a).
+        induction lst.
+        { ins.
+          inversion H.
           lia. }
-        apply Nat.leb_gt in E2.
-        rewrite min_leb; auto.
-        destruct (n0 <=? height a0) eqn:E3.
-        { apply leb_complete in E3.
-          rewrite Min.min_l in H; auto.
-          apply (IHlst _ n0); auto. }
-        apply Nat.leb_gt in E3.
-        rewrite min_leb in H; auto. }
-      apply (IHlst _ n0); auto. }
-    apply Nat.leb_gt in E1.
-    rewrite min_leb in H; auto. }
-  apply (IHlst n); auto.
+        ins.
+        desf.
+        { destruct (n <=? height a0) eqn:E2.
+          { apply leb_complete in E2.
+            rewrite Min.min_l; auto.
+            rewrite Min.min_l in H; auto.
+            { apply (IHlst _ n0); auto. }
+            lia. }
+          apply Nat.leb_gt in E2.
+          rewrite min_leb; auto.
+          destruct (n0 <=? height a0) eqn:E3.
+          { apply leb_complete in E3.
+            rewrite Min.min_l in H; auto.
+            apply (IHlst _ n0); auto. }
+          apply Nat.leb_gt in E3.
+          rewrite min_leb in H; auto. }
+        apply (IHlst _ n0); auto. }
+      apply Nat.leb_gt in E1.
+      rewrite min_leb in H; auto. }
+    apply (IHlst n); auto. }
+  split.
+  { ins.
+    apply (L n); auto. }
+  ins.
+  generalize dependent n.
+  induction lst; simpls.
+  desf.
+  { ins.
+    destruct (n <=? height a) eqn:E1.
+    { apply leb_complete in E1.
+      rewrite Min.min_l; auto.
+      apply IHlst; auto.
+      apply (L (height a)).
+      split; auto.
+      lia. }
+    apply leb_iff_conv in E1.
+    rewrite min_leb; auto. }
+  ins.
+  apply IHlst; auto.
 Qed.
 
 Lemma height_discr5 lst w n m
@@ -2436,21 +1967,396 @@ Proof.
   apply H; auto.
 Qed.  
 
-Lemma height_apply_f lst1 lst2 lst1' lst2' f w
-      (H1: get_min_height lst1 w None = get_min_height lst1' w None)
-      (H2: get_min_height lst2 w None = get_min_height lst2' w None)
-      (F: fun_correct f) :
-  get_min_height (FormatTrivial.cross_general w f lst1 lst2) w None =
-  get_min_height (FormatTrivial.cross_general w f lst1' lst2') w None.
+Lemma height_not_eq lst w n m
+      (H: n <> m)
+      (T: get_min_height lst w (Some m) = Some n) :
+  get_min_height lst w None = Some n.
 Proof.
-  destruct (get_min_height lst1 w None) eqn:E1.
-  { destruct (get_min_height lst2 w None) eqn:E2.
-    { admit. }
-    repeat rewrite height_none; auto. }
-  repeat rewrite height_none; auto.
-Admitted.
-
+  induction lst.
+  { simpls.
+    inversion T.
+    lia. }
+  simpls.
+  desf.
+  { destruct (m <=? height a) eqn:E1.
+    { apply leb_complete in E1.
+      rewrite Min.min_l in T; auto.
+      assert (L: get_min_height lst w None = Some n).
+      { apply IHlst; auto. }
+      clear IHlst.
+      apply height_remove_val; auto.
+      assert (n < m).
+      { assert (n < m <-> (m <= n -> False)).
+        { clear.
+          split.
+          { ins.
+            lia. }
+          ins.
+          lia. }
+        apply H0.
+        ins.
+        apply (height_discr5 lst w n m); auto.
+        lia. }
+      lia. }
+    apply leb_complete_conv in E1.
+    rewrite min_leb in T; auto. }
+  apply IHlst; auto.
+Qed.  
  
+Lemma height_remove lst lst' w
+      (E: forall a, In a lst' -> is_less_exist a lst = true)
+      (I: pick_best_list lst w ⊆ pick_best_list lst' w) :
+  get_min_height lst w None = get_min_height lst' w None.
+Proof.
+  unfold pick_best_list in I at 2.
+  destruct (height_values lst' w).
+  { assert (L: pick_best_list lst w ⊆ nil -> get_min_height lst w None = None).
+    { clear.
+      ins.
+      unfold pick_best_list in H.
+      desf.
+      generalize Heq, H.
+      clear.
+      generalize (t::l) as lst.
+      ins.
+      induction lst; simpls.
+      desf.
+      { unfold incl in H.
+        simpls.
+        assert (False).
+        { apply (H a); auto. }
+        done. }
+      { simpls.
+        apply beq_nat_false in Heq0.
+        apply height_not_eq in Heq; auto. }
+      apply IHlst; auto. }
+    desf.
+    { simpls.
+      apply L; auto. }
+    apply L; auto. }
+  desf.
+  generalize E, I, H, Heq, H0.
+  clear.
+  generalize (t::l) as lst'.
+  ins.
+  destruct (height_values lst w).
+  { unfold pick_best_list in I.
+    desf.
+    { assert (is_less_exist a nil = true).
+      { apply E; auto. }
+      simpls. }
+    assert (is_less_exist a (t0 :: l0) = true).
+    { apply E; auto. }
+    apply is_exist_eq in H2.
+    desf.
+    assert (False).
+    { apply (height_discr' b (t0::l0) w); auto.
+      apply leb_complete in H0.
+      unfold is_less_than in H3.
+      andb_split.
+      apply leb_complete in H5.
+      apply leb_complete in H4.
+      apply leb_complete in H3.
+      unfold total_width in *.
+      desf.
+      simpls.
+      lia. }
+    done. }
+  desf.
+  rewrite H3.  
+  unfold pick_best_list in I.
+  desf.
+  generalize I, H1, H2.
+  generalize (t0::l0) as lst.
+  clear.
+  ins.
+  induction lst; simpls.
+  desf.
+  { generalize I.
+    clear.
+    ins.
+    assert (In a0 (filter (fun f : t => (total_width f <=? w) && (height f =? height a)) lst')).
+    { unfold incl in I.
+      simpls.
+      apply (I a0); auto. }
+    clear I.
+    induction lst'; simpls.
+    desf.
+    { rewrite in_cons_iff in H.
+      desf.
+      { apply andb_prop in Heq.
+        desf.
+        apply beq_nat_true in Heq0.
+        auto. }
+      apply IHlst'; auto. }
+    apply IHlst'; auto. }
+  { simpls.
+    apply beq_nat_false in Heq.
+    done. }
+  { apply IHlst; auto.
+    apply (incl_tran (m:= a1 :: filter (fun f : t => (total_width f <=? w) && (height f =? height a0)) lst)).
+    { apply incl_tl.
+      done. }
+    apply I. }
+  apply IHlst; auto.
+Qed.
+
+Lemma height_list_only a lst w
+      (H: total_width a <=? w = true) :
+   get_min_height (lst ++ [a]) w None = get_min_height lst w (Some (height a)).
+Proof.
+  generalize dependent a.
+  induction lst.
+  { ins.
+    desf. }
+  ins.
+  desf.
+  { clear IHlst.
+    generalize H, Heq.
+    clear.
+    generalize a, a0.
+    clear.
+    induction lst.
+    { ins.
+      desf.
+      rewrite NPeano.Nat.min_comm; auto. }
+    ins.
+    desf.
+    { rewrite <- Nat.min_assoc.
+      destruct (height a0 <=? height a) eqn:E1.
+      { rewrite Min.min_l.
+        { apply IHlst; auto. }
+        apply leb_complete in E1; auto. }
+      rewrite min_leb.
+      { apply IHlst; auto. }
+      apply Nat.leb_gt in E1; auto. }
+    apply IHlst; auto. }
+  apply IHlst; auto.
+Qed.  
+
+Lemma height_elem_big m n lst w
+      (H: get_min_height lst w None = Some m)
+      (I: n <= m) : get_min_height lst w (Some n) = Some n.
+Proof.
+  induction lst; simpls.
+  desf.
+  { clear IHlst.
+    clear Heq.
+    generalize dependent H.
+    generalize I.
+    generalize (height a) as p.
+    clear I.
+    generalize dependent n.
+    induction lst; simpls.
+    { ins.
+      destruct (n <=? p) eqn:E1.
+      { apply leb_complete in E1.
+        rewrite Min.min_l; auto. }
+      apply Nat.leb_gt in E1.
+      inversion H.
+      lia. }
+    desf.
+    ins.
+    rewrite <- Nat.min_assoc.
+    apply IHlst; auto. }
+  apply IHlst; auto.
+Qed. 
+
+Lemma height_elem_res n lst w
+      (H: get_min_height lst w None = None) : get_min_height lst w (Some n) = Some n.
+Proof.
+  induction lst; simpls.
+  desf.
+  { clear IHlst.
+    clear Heq.
+    generalize dependent H.
+    generalize (height a) as m.
+    generalize dependent n.
+    induction lst; simpls.
+    desf.
+    ins.
+    rewrite <- Nat.min_assoc.
+    apply IHlst; auto. }
+  apply IHlst; auto.
+Qed.
+
+Lemma height_elem_only lst lst' w n
+      (H: get_min_height lst w None = get_min_height lst' w None) :
+  get_min_height lst w (Some n) = get_min_height lst' w (Some n).
+Proof.
+  generalize dependent n.
+  induction lst'.
+  { ins.
+    apply height_elem_res; auto. }
+  ins.
+  desf.
+  { clear IHlst'.
+    clear Heq.
+    generalize H.
+    clear.
+    generalize (height a) as m.
+    generalize dependent n.
+    induction lst'.
+    { ins.
+      destruct (n <=? m) eqn:E1.
+      { apply leb_complete in E1.
+        rewrite Min.min_l; auto. 
+        apply (height_elem_big m); auto. }
+      apply Nat.leb_gt in E1.
+      rewrite min_leb; auto.
+      apply height_remove_val; auto. }
+    ins.
+    desf.
+    { rewrite <- Nat.min_assoc.
+      apply IHlst'; auto. }
+    apply IHlst'; auto. }
+  apply IHlst'; auto.
+Qed.     
+
+Lemma pick_add_elems a lst lst' w
+      (E: forall a, In a lst' -> is_less_exist a lst = true)
+      (I: lst ⊆ lst')
+      (H: pick_best_list lst w ⊆ pick_best_list lst' w) :
+  pick_best_list (lst ++ [a]) w ⊆ pick_best_list (lst' ++ [a]) w.
+Proof.
+  unfold pick_best_list at 1.
+  desf.
+  apply best_remove_helper. 
+  { rewrite <- Heq in Heq0.
+    clear Heq.
+    assert (T: get_min_height lst w None = get_min_height lst' w None).
+    { apply height_remove; auto. }
+    clear H.
+    clear E.
+    destruct (total_width a <=? w) eqn:E1.
+    { rewrite height_list_only; auto.
+      rewrite height_list_only in Heq0; auto.
+      clear E1.
+      rewrite <- Heq0.
+      clear Heq0.
+      symmetry.
+      generalize (height a) as m.
+      ins.
+      apply height_elem_only; auto. }
+    rewrite get_height_none; auto.
+    rewrite get_height_none in Heq0; auto.
+    rewrite <- T; auto. }
+  unfold incl.
+  clear Heq0.
+  simpl.
+  ins.
+  desf.
+  { assert (In a0 (lst ++ [a])).
+    { rewrite Heq.
+      done. }
+    apply in_app_or in H0.
+    desf.
+    { apply in_app_l.
+      generalize H0, I.
+      clear.
+      ins.
+      induction lst.
+      { done. }
+      unfold incl in I.
+      simpls.
+      desf.
+      all:apply (I a0); auto. }
+    simpls.
+    desf.
+    apply in_app_r.
+    simpls.
+    auto. }
+  assert (In a0 (lst ++ [a])).
+  { rewrite Heq.
+    apply in_cons.
+    done. }
+  apply in_app_or in H1.
+  desf.
+  { apply in_app_l.
+    generalize H1, I.
+    clear.
+    ins.
+    induction lst.
+    { done. }
+    unfold incl in I.
+    simpls.
+    desf.
+    all:apply (I a0); auto. }
+  simpls.
+  desf.
+  apply in_app_r.
+  simpls.
+  auto.
+Qed.  
+
+Lemma pick_pareto_incl lst w :
+  pick_best_list (pareto lst) w ⊆ pick_best_list lst w.
+Proof.
+  induction lst using rev_ind; simpls.
+  destruct (is_less_exist x lst) eqn:E1.
+  { rewrite linear_pareto_exist; auto.
+    apply (incl_tran (m:= pick_best_list lst w)).
+    { apply IHlst. }
+    clear IHlst.
+    induction lst.
+    { simpl in E1.
+      discriminate E1. }
+    apply is_exist_cons_alt in E1.
+    desf.
+    { apply pick_is_less'.
+      apply E1. }
+    simpls.
+    destruct (total_width a <=? w) eqn:E2.
+    { simpl.
+      rewrite (get_height_exist _ x); auto.
+      desf.
+      { rewrite filter_app.
+        apply incl_cons.
+        { done. }
+        apply incl_tl.
+        apply incl_appl.
+        done. }
+      rewrite filter_app.
+      apply incl_appl.
+      done. }
+    rewrite pick_height_link; auto.
+    desf.
+    rewrite filter_app.
+    apply incl_appl.
+    done. }
+  rewrite linear_pareto_not_exist; auto.
+  apply (pick_add_elems x) in IHlst.
+  { apply (incl_tran (m:= pick_best_list (pareto lst ++ [x]) w)).
+    { clear. 
+      generalize (pareto lst).
+      ins.
+      unfold pick_best_list.
+      rewrite pick_height_none.
+      desf.
+      rewrite <- Heq.
+      rewrite <- Heq1.
+      clear.
+      induction l. 
+      { done. }
+      destruct (is_less_than x a) eqn:E1.
+      { rewrite par_elem2_less; auto.
+        simpls.
+        desf.
+        apply incl_tl.
+        apply IHl. }
+      rewrite par_elem2_not_less; auto.
+      simpls.
+      desf.
+      apply incl_cons.
+      { done. }
+      apply incl_tl.
+      apply IHl. }
+    apply IHlst. }
+  { ins.
+    apply pareto_less_elem; auto. }
+  apply pareto_incl.
+Qed.   
+
 Lemma cross_general_cor lst1 lst2 lst1' lst2' f w
       (H1: lst1 ⊆ lst1')
       (H2: lst2 ⊆ lst2') :
@@ -2509,44 +2415,44 @@ Proof.
   apply H2.
 Qed.
 
-Lemma is_exist_eq a lst :
-  is_less_exist a lst = true <-> exists b, In b lst /\ is_less_than b a = true.
-Proof.
-  split.
-  { ins.
-    induction lst.
-    { simpl in H.
-      discriminate H. }
-    apply is_exist_cons_alt in H.
-    simpls.
-    desf.
-    { exists a0; auto. }
-    assert (L: exists b : t, In b lst /\ is_less_than b a = true).
-    { apply IHlst; auto. }
-    desf.
-    exists b; auto. }
-  ins.
-  desf.
-  induction lst.
-  { done. }
-  apply is_exist_cons_alt.
-  simpls.
-  desf; auto.
-Qed.
-
 Lemma cross_general_elem a w f lst lst' :
   In a (FormatTrivial.cross_general w f lst lst') ->
   exists x y, a = (f x y) /\ In x lst /\ In y lst' /\ total_width (f x y) <= w. 
 Proof.
   ins.
-  generalize dependent lst'.
-  induction lst.
-  { ins.
-    rewrite cross_general_nil in H.
-    done. }
+  generalize dependent lst.
+  induction lst'; simpls.
   ins.
-Admitted.
-  
+  unfold FormatTrivial.cross_general in *.
+  simpl in H.
+  rewrite filter_app in H.
+  apply in_app_or in H.
+  desf.
+  { clear IHlst'.
+    induction lst; simpls.
+    desf.
+    { simpls.
+      desf.
+      { exists a1, a0.
+        apply leb_complete in Heq.
+        repeat split; auto. }
+      assert (L: exists x y : t,
+                 a = f x y /\ In x lst /\ (a0 = y \/ In y lst') /\ total_width (f x y) <= w).
+      { apply IHlst; auto. }
+      desf.
+      all: exists x, y; desf; auto. }
+    assert (L: exists x y : t,
+               a = f x y /\ In x lst /\ (a0 = y \/ In y lst') /\ total_width (f x y) <= w).
+    { apply IHlst; auto. }
+    desf.
+    all: exists x, y; desf; auto. }
+  assert (L: exists x y : t, a = f x y /\ In x lst /\ In y lst' /\ total_width (f x y) <= w).
+  { apply IHlst'; auto. }
+  desf.
+  exists x,y.
+  desf; auto.
+Qed.  
+ 
 Lemma elem_in lst1 lst2 lst1' lst2' f w
       (F: fun_correct f)
       (H1: forall a, In a lst1 -> is_less_exist a lst1' = true)
@@ -2587,26 +2493,34 @@ Proof.
       lia. }
     generalize H, L1, L2.
     clear.
-    ins. (*
-    destruct lst1'.
-    { done. } 
-    unfold FormatTrivial.cross_general.
-    rewrite <- (app_nil_l (concat (map (fun b1 : Format.t => map (fun a : Format.t => f a b1) (t :: lst1')) lst2'))).
-    set (l:= nil).
-    generalize dependent l.
+    ins.
+    generalize dependent lst1'.
     induction lst2'.
     { done. }
-    simpls.
+    ins.
     desf.
-    { ins.
+    { clear IHlst2'.
+      generalize dependent lst2'.
+      unfold FormatTrivial.cross_general.
+      ins.
       rewrite filter_app.
-      apply in_app_r.
-      apply filter_In.
-      simpl. auto. }
-    { *)
-    admit. }  
-  apply F; auto.  
-Admitted.
+      apply in_app_l.
+      induction lst1'.
+      { done. }
+      ins.
+      desf.
+      { apply in_cons.
+        apply IHlst1'.
+        apply L1. }
+      apply IHlst1'.
+      apply L1. }
+    unfold FormatTrivial.cross_general in *.
+    simpl.
+    rewrite filter_app.
+    apply in_app_r.
+    apply IHlst2'; auto. }
+  apply F; auto.
+Qed.
  
 Lemma eval_cor w doc :
   evaluatorList w doc ⊆ evaluatorTrivial w doc.
@@ -2655,9 +2569,11 @@ Proof.
     unfold flip.
     desf; auto.
     rewrite is_less_than_reflexivity; auto. }
-  { rewrite <- indent_eq.
-    ins.
-    admit. }
+  { ins. 
+    rewrite <- indent_eq.
+    unfold FormatTrivial.indentDoc.
+    apply (elem_in (empty :: nil) (evaluatorTrivial w doc)); auto.
+    apply indent_correct. }
   { ins.
     unfold besideDoc.
     rewrite <- cross_general_eq.
@@ -2683,7 +2599,7 @@ Proof.
   rewrite pareto_inside.
   apply (elem_in (evaluatorTrivial w doc1) (evaluatorTrivial w doc2)); auto.
   apply fill_correct.
-Admitted.      
+Qed.     
 
 Definition induction_cond (a: Doc) (b: Doc) (w: nat):=
   << A: pick_best_list (evaluatorList w a) w ⊆ pick_best_list (evaluatorTrivial w a) w >> /\
@@ -2697,7 +2613,6 @@ Proof.
   rewrite <- cross_general_eq.
   apply (incl_tran (m := pick_best_list (FormatTrivial.cross_general w add_beside (evaluatorList w a) (evaluatorList w b)) w)).
   { apply pick_pareto_incl. }
-  unfold FormatTrivial.besideDoc.
   apply best_remove.
   { apply height_less.
     { apply cross_general_cor.
@@ -2709,8 +2624,7 @@ Proof.
   all: apply eval_cor.
 Qed.
 
-Lemma pareto_above a b w
-       (H: induction_cond a b w) :
+Lemma pareto_above a b w :
     pick_best_list (FormatList.aboveDoc w (evaluatorList w a) (evaluatorList w b)) w ⊆
     pick_best_list (FormatTrivial.aboveDoc w (evaluatorTrivial w a) (evaluatorTrivial w b)) w.
 Proof.
@@ -2718,19 +2632,16 @@ Proof.
   rewrite <- cross_general_eq.
   apply (incl_tran (m := pick_best_list (FormatTrivial.cross_general w add_above (evaluatorList w a) (evaluatorList w b)) w)).
   { apply pick_pareto_incl. }
-  unfold FormatTrivial.aboveDoc.
   apply best_remove.
-  { unfold induction_cond in H.
-    desf.
-    apply height_apply_f.
-    { apply pick_height_link.
-      apply A. }
-    { apply pick_height_link.
-      apply B. }
-    apply above_correct. }  
+  { apply height_less.
+    { apply cross_general_cor.
+      all: apply eval_cor. }
+    apply elem_in.
+    { apply above_correct. }
+    all: apply eval_in_elem. }  
   apply cross_general_cor.
   all: apply eval_cor.
-Qed.  
+Qed.
   
 
 Lemma pareto_fill a b w n
@@ -2740,21 +2651,18 @@ Lemma pareto_fill a b w n
 Proof.
   unfold fillDoc.
   rewrite <- cross_general_eq.
-  unfold FormatTrivial.fillDoc.
   apply (incl_tran (m := pick_best_list (FormatTrivial.cross_general w (fun fs f : t => add_fill fs f n) (evaluatorList w a) (evaluatorList w b)) w)).
   { apply pick_pareto_incl. }
-  apply best_remove.
-  { unfold induction_cond in H.
-    desf.
-    apply height_apply_f.
-    { apply pick_height_link.
-      apply A. }
-    { apply pick_height_link.
-      apply B. }
-    apply fill_correct. }  
+  apply best_remove. 
+  { apply height_less.
+    { apply cross_general_cor.
+      all: apply eval_cor. }
+    apply elem_in.
+    { apply fill_correct. }
+    all: apply eval_in_elem. }  
   apply cross_general_cor.
   all: apply eval_cor.
-Qed.     
+Qed.
 
 Lemma pareto_choice a b w
        (H: induction_cond a b w) :
@@ -2765,27 +2673,57 @@ Proof.
   apply (incl_tran (m := pick_best_list (evaluatorList w a ++ evaluatorList w b) w)).
   { apply pick_pareto_incl. }
   unfold FormatTrivial.choiceDoc.
-  apply best_remove.
-  { admit. }
+  apply best_remove. 
+  { unfold induction_cond in H.
+    desf.
+    assert (A': get_min_height (evaluatorList w a) w None = get_min_height (evaluatorTrivial w a) w None).
+    { apply height_remove; auto.
+      apply eval_in_elem. }
+    clear A.
+    assert (B': get_min_height (evaluatorList w b) w None = get_min_height (evaluatorTrivial w b) w None).
+    { apply height_remove; auto.
+      apply eval_in_elem. }
+    clear B.
+    apply height_less.
+    { apply incl_app.
+      { apply incl_appl.
+        apply eval_cor. }
+      apply incl_appr.
+      apply eval_cor. }
+    ins.
+    apply in_app_or in H.
+    desf.
+    { apply is_exist_cons_all.
+      rewrite eval_in_elem; auto. }
+    apply is_exist_cons_all.
+    rewrite (eval_in_elem _ b); auto. }
   apply incl_app.
   { apply incl_appl. 
     apply eval_cor. }
   apply incl_appr.
   apply eval_cor.
-Admitted.
+Qed.
 
 Lemma pareto_indent a w sh :
     pick_best_list (indentDoc w sh (evaluatorList w a)) w ⊆
     pick_best_list (FormatTrivial.indentDoc w sh (evaluatorTrivial w a)) w.
 Proof.
-  apply best_remove.
-  { admit. }
   rewrite <- indent_eq.
+  apply best_remove.
+  { apply height_less.
+    { unfold FormatTrivial.indentDoc.
+      apply cross_general_cor.
+      { done. }
+      apply eval_cor. }
+    apply elem_in; simpls.
+    { apply indent_correct. }
+    ins.
+    apply eval_in_elem; auto. }
   unfold FormatTrivial.indentDoc.
   apply cross_general_cor.
   { done. }
   apply eval_cor.
-Admitted.
+Qed.
               
 (*---------MAIN Theorem-----------*)
 Theorem listEqTrivialProof :
