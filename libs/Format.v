@@ -111,12 +111,7 @@ Definition add_fill (G:t) (G':t) (shift:nat) :t :=
          | 1,(1|2) => G.(first_line_width) + G'.(first_line_width)
          | 1,_ => shift + G'.(middle_width)
          | 2,1 => G.(first_line_width)
-         | 2,2 => list_max (exist _ 
-                              (G.(middle_width)::
-                              (G.(last_line_width) + G'.(first_line_width))::
-                              (shift + G'.(middle_width))::
-                               nil)
-                                 (@nil_cons _ _ _))
+         | 2,2 => G.(last_line_width) + G'.(first_line_width)
          | 2,_ => max (G.(last_line_width) + G'.(first_line_width)) (shift + G'.(middle_width))
          | _,1 => G.(middle_width)
          | _,2 => max G.(middle_width) (G.(last_line_width) + G'.(first_line_width))

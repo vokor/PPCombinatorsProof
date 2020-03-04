@@ -227,7 +227,6 @@ Proof.
   simpls.
   lia.
 Qed.
-
 Lemma is_less_exist_destruct x lst lst' :
   is_less_exist x (lst ++ lst') = is_less_exist x lst || is_less_exist x lst'.
 Proof.
@@ -459,9 +458,26 @@ Proof.
   rewrite H.
   auto.
 Qed.
-  
-Definition fun_correct (f: t -> t -> t) :=
-  forall a b c d, is_less_than a b = true /\ is_less_than c d = true -> is_less_than (f a c) (f b d) = true. 
+
+Definition format_correct1 a := height a = 2 -> first_line_width a = middle_width a.
+
+Definition format_correct2 a := height a = 1 ->
+                                first_line_width a = middle_width a /\
+                                middle_width a = last_line_width a.
+
+Definition format_correct a := << F1: format_correct1 a >> /\ << F2: format_correct2 a >>. 
+
+
+Definition fun_correct1 (f: t -> t -> t) :=
+  forall a b c d, height a <= height c /\ height b <= height d -> height (f a b) <= height (f c d).
+
+Definition fun_correct2 (f: t -> t -> t) :=
+  forall a b c, total_width a <= total_width b /\ last_line_width a <= last_line_width b ->
+                  total_width (f a c) <= total_width (f b c) /\
+                  last_line_width (f a c) <= last_line_width (f b c).
+
+Definition fun_correct f := << F1: fun_correct1 f >> /\
+                            << F2: fun_correct2 f >>.
 
 Require Import Lia.
 

@@ -1892,11 +1892,14 @@ Proof.
   desf; auto.
 Qed.      
 
+Definition link_lists lst lst' :=
+  forall a, In a lst' -> exists b, In b lst /\ In b lst' /\  height b <= height a. 
+
 Lemma height_less lst lst' w
-      (H: lst ⊆ lst') 
-      (P: forall a, In a lst' -> is_less_exist a lst = true) :
+      (H: lst ⊆ lst')
+      (P: link_lists lst lst') :
             get_min_height lst w None = get_min_height lst' w None.
-Proof.
+Proof. (*
   destruct (height_values lst' w) eqn:E1.
   { clear E1.
     rewrite e.
@@ -1964,8 +1967,8 @@ Proof.
   unfold incl in *.
   simpl in H.
   ins.
-  apply H; auto.
-Qed.  
+  apply H; auto. *)
+Admitted. 
 
 Lemma height_not_eq lst w n m
       (H: n <> m)
@@ -2415,62 +2418,141 @@ Proof.
   apply H2.
 Qed.
 
-Lemma cross_general_elem a w f lst lst' :
-  In a (FormatTrivial.cross_general w f lst lst') ->
+Lemma cross_general_elem a w f lst lst'
+  (F: fun_correct f) :
+  In a (FormatTrivial.cross_general w f lst lst') <->
   exists x y, a = (f x y) /\ In x lst /\ In y lst' /\ total_width (f x y) <= w. 
 Proof.
-  ins.
-  generalize dependent lst.
-  induction lst'; simpls.
-  ins.
-  unfold FormatTrivial.cross_general in *.
-  simpl in H.
-  rewrite filter_app in H.
-  apply in_app_or in H.
-  desf.
-  { clear IHlst'.
-    induction lst; simpls.
+  split.
+  { ins.
+    generalize dependent lst.
+    induction lst'; simpls.
+    ins.
+    unfold FormatTrivial.cross_general in *.
+    simpl in H.
+    rewrite filter_app in H.
+    apply in_app_or in H.
     desf.
-    { simpls.
+    { clear IHlst'.
+      induction lst; simpls.
       desf.
-      { exists a1, a0.
-        apply leb_complete in Heq.
-        repeat split; auto. }
+      { simpls.
+        desf.
+        { exists a1, a0.
+          apply leb_complete in Heq.
+          repeat split; auto. }
+        assert (L: exists x y : t,
+                   a = f x y /\ In x lst /\ (a0 = y \/ In y lst') /\ total_width (f x y) <= w).
+        { apply IHlst; auto. }
+        desf.
+        all: exists x, y; desf; auto. }
       assert (L: exists x y : t,
                  a = f x y /\ In x lst /\ (a0 = y \/ In y lst') /\ total_width (f x y) <= w).
       { apply IHlst; auto. }
       desf.
       all: exists x, y; desf; auto. }
-    assert (L: exists x y : t,
-               a = f x y /\ In x lst /\ (a0 = y \/ In y lst') /\ total_width (f x y) <= w).
-    { apply IHlst; auto. }
+    assert (L: exists x y : t, a = f x y /\ In x lst /\ In y lst' /\ total_width (f x y) <= w).
+    { apply IHlst'; auto. }
     desf.
-    all: exists x, y; desf; auto. }
-  assert (L: exists x y : t, a = f x y /\ In x lst /\ In y lst' /\ total_width (f x y) <= w).
-  { apply IHlst'; auto. }
+    exists x,y.
+    desf; auto. }
+  ins.
   desf.
-  exists x,y.
-  desf; auto.
-Qed.  
+  assert (C: total_width x <= w /\ total_width y <= w).
+  { unfold fun_correct in F.
+    desf.
+    unfold fun_correct2 in F2.
+    admit. (*
+    apply F2; auto.*) }
+  desf.
+  generalize dependent lst.
+  induction lst'; simpls.
+  ins.
+  unfold FormatTrivial.cross_general in *.
+  simpls.
+  rewrite filter_app.
+  apply in_or_app.
+  desf.
+  { clear IHlst'.
+    assert (In (f x y) (filter (fun f0 : t => total_width f0 <=? w) (map (fun a : t => f a y) lst))).
+    { induction lst; simpls.
+      desf.
+      { apply Nat.leb_gt in Heq.
+        lia. }
+      { simpls.
+        assert (In (f x y) (filter (fun f0 : t => total_width f0 <=? w) (map (fun a0 : t => f a0 y) lst))).
+        { apply IHlst; auto. }
+        auto. }
+      apply IHlst; auto. }
+    auto. }
+  assert (In (f x y)
+    (filter (fun f0 : t => total_width f0 <=? w)
+            (concat (map (fun b : t => map (fun a0 : t => f a0 b) lst) lst')))).
+  { apply IHlst'; auto. }
+  auto.
+Admitted.
  
 Lemma elem_in lst1 lst2 lst1' lst2' f w
       (F: fun_correct f)
-      (H1: forall a, In a lst1 -> is_less_exist a lst1' = true)
-      (H2: forall a, In a lst2 -> is_less_exist a lst2' = true) :
-  forall a, In a (FormatTrivial.cross_general w f lst1 lst2) ->
-            is_less_exist a (FormatTrivial.cross_general w f lst1' lst2') = true.
-Proof.
+      (H1: link_lists lst1 lst1')
+      (H2: link_lists lst2 lst2') :
+  link_lists (FormatTrivial.cross_general w f lst1 lst2) (FormatTrivial.cross_general w f lst1' lst2').
+Proof. 
+  unfold link_lists in *.
   ins.
-  apply cross_general_elem in H.
+  apply cross_general_elem in H; auto.
+  desf. 
+  assert (T: total_width x <= w /\ total_width y <= w).
+  { (*apply F; auto. }
   desf.
-  assert (L1: is_less_exist x lst1' = true).
-  { apply H1; auto. }
-  assert (L2: is_less_exist y lst2' = true).
-  { apply H2; auto. }
+
+
+
+
+  assert (L1: exists b : t, In b lst1 /\ In b lst1' /\ total_width b <= w /\ height b = height x).
+  { apply H1.
+    split; auto. }
+  assert (L2: exists b : t, In b lst2 /\ In b lst2' /\ total_width b <= w /\ height b = height y).
+  { apply H2.
+    split; auto. }
   clear H1.
   clear H2.
-  clear H0.
+  clear H4.
   clear H3.
+  desf.
+  exists (f b0 b).
+  repeat split.
+  { apply cross_general_elem; auto.
+    exists b0.
+    exists b.
+    repeat split; auto.
+    red in F.
+    desf.
+    unfold fun_correct2 in F2.
+    assert (total_width (f b0 b) <= total_width (f x y)).
+    { apply F2; auto. }
+    lia. }
+  { red in F.
+    desf.
+    unfold fun_correct2 in F2.
+    assert (total_width (f b0 b) <= total_width (f x y)).
+    { apply F2; auto. }
+    apply H. }
+  { admit.
+
+
+  }
+  apply F.
+  
+  
+    apply (F2 _ _ x y).
+    auto. }
+  
+  
+
+    
+
+  
   apply is_exist_eq.
   apply is_exist_eq in L1.
   apply is_exist_eq in L2.
@@ -2478,19 +2560,9 @@ Proof.
   exists (f b0 b).
   split.
   { assert (H: total_width (f b0 b) <=? w = true).
-    { assert (R: is_less_than (f b0 b) (f x y) = true).
-      { apply F; auto. }
-      unfold is_less_than in R.
-      andb_split.
-      apply leb_complete in H.
-      apply leb_complete in H2.
-      apply leb_complete in H1.
-      apply leb_complete in H0.
-      apply Nat.leb_le.
-      unfold total_width in *.
-      desf.
-      simpls.
-      lia. }
+    { apply Nat.leb_le.
+      unfold fun_correct in F.
+      apply (F _ x _ y); auto. }
     generalize H, L1, L2.
     clear.
     ins.
@@ -2520,7 +2592,8 @@ Proof.
     apply in_app_r.
     apply IHlst2'; auto. }
   apply F; auto.
-Qed.
+Qed. *)
+Admitted.
  
 Lemma eval_cor w doc :
   evaluatorList w doc ⊆ evaluatorTrivial w doc.
@@ -2560,9 +2633,8 @@ Proof.
   apply cross_general_cor; auto.
 Qed.
 
-Lemma eval_in_elem w doc :
-  forall a, In a (evaluatorTrivial w doc) -> is_less_exist a (evaluatorList w doc) = true.
-Proof.
+Lemma eval_in_elem w doc : link_lists (evaluatorList w doc) (evaluatorTrivial w doc).
+Proof. (*
   induction doc.
   all: simpls.
   { ins.
@@ -2571,7 +2643,7 @@ Proof.
     rewrite is_less_than_reflexivity; auto. }
   { ins. 
     rewrite <- indent_eq.
-    unfold FormatTrivial.indentDoc.
+    unfold FormatTrivial.indentDoc. 
     apply (elem_in (empty :: nil) (evaluatorTrivial w doc)); auto.
     apply indent_correct. }
   { ins.
@@ -2599,12 +2671,161 @@ Proof.
   rewrite pareto_inside.
   apply (elem_in (evaluatorTrivial w doc1) (evaluatorTrivial w doc2)); auto.
   apply fill_correct.
-Qed.     
+Qed.  *)
+Admitted.
 
 Definition induction_cond (a: Doc) (b: Doc) (w: nat):=
   << A: pick_best_list (evaluatorList w a) w ⊆ pick_best_list (evaluatorTrivial w a) w >> /\
   << B: pick_best_list (evaluatorList w b) w ⊆ pick_best_list (evaluatorTrivial w b) w >>.
 
+Lemma elem_about w doc :
+  forall a, In a (evaluatorList w doc) -> (exists f x y, fun_correct f /\ f x y = a) \/
+                                          (height a = 1).
+Proof.
+  induction doc.
+  all: simpls.
+  { ins.
+    desf.
+    destruct (height (of_string s) =? 1) eqn:E1.
+    { apply beq_nat_true in E1.
+      auto. }
+    apply beq_nat_false in E1.
+    apply or_introl.
+    generalize dependent E1.
+    unfold of_string.
+    generalize (map line (Format.split "\n" s)).
+    ins.
+    induction l.
+    { simpls.
+      exists add_beside.
+      exists empty.
+      exists empty.
+      split.
+      { apply beside_correct. }
+      unfold empty.
+      unfold add_beside.
+      simpls. }
+    simpls.
+    clear IHl.
+    clear E1.
+    assert (add_above empty a = a); simpls.
+    rewrite H.
+    admit. }
+Admitted.   
+
+Lemma eval_less_exist w doc :
+  forall b, In b (evaluatorTrivial w doc) ->
+            exists a, In a (evaluatorList w doc) /\ height a <= height b /\
+                      exists g, g a = total_width a /\ g a <= total_width b.
+Proof.
+  induction doc.
+  { ins.
+    desf.
+    exists (of_string s).
+    repeat split; auto.
+    exists total_width.
+    auto. }
+  { ins.
+    unfold FormatTrivial.indentDoc.
+    admit. }
+  { ins.
+    unfold besideDoc.
+    unfold FormatTrivial.besideDoc in *.
+    rewrite <- cross_general_eq.
+    apply cross_general_elem in H.
+    desf.
+    2: apply beside_correct.
+    assert (exists a : t,
+             In a (evaluatorList w doc1) /\
+             height a <= height x /\
+             max (middle_width a) (first_line_width a) <=
+             max (middle_width x) (first_line_width x) /\
+             Init.Nat.max (middle_width a) (last_line_width a) <=
+             Init.Nat.max (middle_width x) (last_line_width x)).
+    { apply IHdoc1; auto. }
+    assert (exists b : t,
+             In b (evaluatorList w doc2) /\
+             height b <= height y /\
+             max (middle_width b) (first_line_width b) <=
+             max (middle_width y) (first_line_width y) /\
+             Init.Nat.max (middle_width b) (last_line_width b) <=
+             Init.Nat.max (middle_width y) (last_line_width y)).
+    { apply IHdoc2; auto. }
+    clear IHdoc1. clear IHdoc2.
+    desf.
+    exists (add_beside a b).
+    repeat split.
+    { admit. }
+    { admit. }
+Admitted.
+
+  
+
+Lemma get_elem_eval a b w doc1 doc2 f
+      (F: fun_correct f)
+      (T: total_width (f a b) <= w)
+      (I1: In a (evaluatorTrivial w doc1))
+      (I2: In b (evaluatorTrivial w doc2)) :
+  exists c d, In c (evaluatorList w doc1) /\ In d (evaluatorList w doc2) /\
+              total_width (f c d) <= w /\ height (f c d) <= height (f a b).
+Proof.
+  assert (exists c, In c (evaluatorTrivial w doc1) /\ In c (evaluatorList w doc1) /\
+                    is_less_than c a).
+  { apply eval_less_exist; auto. }
+  assert (exists d, In d (evaluatorTrivial w doc2) /\ In d (evaluatorList w doc2) /\
+                    is_less_than d b).
+  { apply eval_less_exist; auto. }
+  desf.
+  exists c.
+  exists d.
+  repeat split; auto.
+  { admit. }
+  apply F.
+Admitted.
+  
+Lemma incl_in (a:t) lst lst'
+      (H: In a lst)
+      (I: lst ⊆ lst') : In a lst'.
+Proof.
+  induction lst; simpls.
+  desf.
+  { unfold incl in I.
+    apply (I a).
+    simpls; auto. }
+  apply IHlst; auto.
+  unfold incl in *.
+  ins.
+  apply (I a1); auto.
+Qed.    
+
+Lemma elem_in' a b f w
+      (F: fun_correct f w) :
+  link_lists (FormatTrivial.cross_general w f (evaluatorList w a) (evaluatorList w b))
+             (FormatTrivial.cross_general w f (evaluatorTrivial w a) (evaluatorTrivial w b)).
+Proof.
+  unfold link_lists.
+  ins.
+  apply cross_general_elem in H; auto.
+  desf.
+  assert (exists c d, In c (evaluatorList w a) /\ In d (evaluatorList w b) /\
+                      total_width (f c d) <= w /\ height (f c d) <= height (f x y)).
+  { apply get_elem_eval; auto. }
+  desf.
+  exists (f c d).
+  repeat split; auto.
+  all: apply cross_general_elem; auto.
+  { exists c.
+    exists d.
+    repeat split; auto. }
+  exists c.
+  exists d.
+  repeat split; auto.
+  { apply (incl_in _ (evaluatorList w a)); auto.
+    apply eval_cor. }
+  apply (incl_in _ (evaluatorList w b)); auto.
+  apply eval_cor.  
+Qed.  
+  
 Lemma pareto_beside a b w :
     pick_best_list (FormatList.besideDoc w (evaluatorList w a) (evaluatorList w b)) w ⊆
     pick_best_list (FormatTrivial.besideDoc w (evaluatorTrivial w a) (evaluatorTrivial w b)) w.
@@ -2617,9 +2838,8 @@ Proof.
   { apply height_less.
     { apply cross_general_cor.
       all: apply eval_cor. }
-    apply elem_in.
-    { apply beside_correct. }
-    all: apply eval_in_elem. }  
+    apply elem_in'.
+    apply beside_correct. }
   apply cross_general_cor.
   all: apply eval_cor.
 Qed.

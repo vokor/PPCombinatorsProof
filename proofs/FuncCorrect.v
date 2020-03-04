@@ -5,38 +5,31 @@ Require Import Coq.Program.Basics.
 Require Import Lia.
 Require Import Coq.ssr.ssrbool.
 Require Import ZArith Int.
-Require Import Coq.Bool.Bool.
+Require Import Coq.Bool.Bool.              
 
 Lemma beside_correct : fun_correct add_beside.
-Proof. (*
-  unfold func_correct.
-  split.
-  all: red.
-  { unfold func_correct1.
-    ins.
-    destruct (is_less_than (add_beside u w) (add_beside v w)) eqn:E1.
-    { unfold is_less_than in *.
-      andb_split.
-      repeat (apply andb_true_iff; split).
-      unfold add_beside in H.
-      destruct u.
-      simpl in H.
-      s
-    unfold add_beside.
-    destruct u.
-    destruct v.
-    simpl.
-    desf.
-    { simpl.
-      a *)
-Admitted.
-
-Lemma above_correct : fun_correct add_above.
 Proof.
+  unfold fun_correct.
+  split.
+  { red.
+    unfold fun_correct1.
+    ins.
+    desf.
+    unfold add_beside.
+    desf; ins.
+    all: lia. }
+  red.
+  unfold fun_correct2.
+  ins.
+  desf.
+  unfold total_width in *.
+  unfold add_beside.
+  desf; ins.
+ 
 Admitted.
 
 
-Lemma fill_correct n: fun_correct (fun fs f : t => add_fill fs f n).
+Lemma fill_correct n : fun_correct (fun fs f : t => add_fill fs f n).
 Proof.
 Admitted.
 
