@@ -465,22 +465,36 @@ Definition format_correct2 a := height a = 1 ->
                                 first_line_width a = middle_width a /\
                                 middle_width a = last_line_width a.
 
-Definition format_correct a := << F1: format_correct1 a >> /\ << F2: format_correct2 a >>. 
+Definition format_correct3 a := height a > 0.
 
+Definition format_correct a := << F1: format_correct1 a >> /\
+                               << F2: format_correct2 a >> /\
+                               << F3: format_correct3 a >>. 
 
-Definition fun_correct1 (f: t -> t -> t) :=
-  forall a b c d, height a <= height c /\ height b <= height d -> height (f a b) <= height (f c d).
+Definition quad_correct a b c d := << T1: format_correct a >> /\
+                                   << T2: format_correct b >> /\
+                                   << T3: format_correct c >> /\
+                                   << T4: format_correct d >>.
 
-Definition fun_correct2 (f: t -> t -> t) :=
-  forall a b c, total_width a <= total_width b /\ last_line_width a <= last_line_width b ->
-                  total_width (f a c) <= total_width (f b c) /\
-                  last_line_width (f a c) <= last_line_width (f b c).
+Definition fill_swap n := fun fs f : t => add_fill fs f n.
 
-Definition fun_correct f := << F1: fun_correct1 f >> /\
-                            << F2: fun_correct2 f >>.
+Definition fun_comb f n := f = add_beside \/ f = add_above \/ f = fill_swap n.
 
+Lemma fun_correct b n m f g
+      (H1: fun_comb f n)
+      (H2: fun_comb g m) :
+  forall a x y w, quad_correct a b x y /\
+                  is_less_than a b = true /\
+                  total_width (f x (g b y)) <= w ->
+                  total_width (f x (g a y)) <= w.
+Proof.
+  ins.
+  unfold fun_comb in *.
+  desf.
+  {
+Admitted.
+  
 Require Import Lia.
-
 
 Lemma leb_le_eq_true x y z :
   x <= z <-> (x + y <=? z + y) = true.

@@ -532,7 +532,7 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma pareto_ins_elem_not_exist a l r
+Lemma pareto_ins_elem_not_exist a l r 
       (H1: is_less_exist a r = true)
       (H2: forallb_not_exist (a::nil) r = true) :
   pareto (l ++ a::r) = pareto (l ++ r).
@@ -904,6 +904,22 @@ Proof.
 Qed.
 
 Notation "a ⊆ b" := (incl a b)  (at level 60).
+Notation "a ≡ b" := (is_less_than a b = true /\ is_less_than b a = true) (at level 60).
+
+Lemma incl_in (a:t) lst lst'
+      (H: In a lst)
+      (I: lst ⊆ lst') : In a lst'.
+Proof.
+  induction lst; simpls.
+  desf.
+  { unfold incl in I.
+    apply (I a).
+    simpls; auto. }
+  apply IHlst; auto.
+  unfold incl in *.
+  ins.
+  apply (I a1); auto.
+Qed.
 
 Lemma pareto_incl lst : pareto lst ⊆ lst.
 Proof.
@@ -2418,8 +2434,7 @@ Proof.
   apply H2.
 Qed.
 
-Lemma cross_general_elem a w f lst lst'
-  (F: fun_correct f) :
+Lemma cross_general_elem a w f lst lst' :
   In a (FormatTrivial.cross_general w f lst lst') <->
   exists x y, a = (f x y) /\ In x lst /\ In y lst' /\ total_width (f x y) <= w. 
 Proof.
@@ -2459,11 +2474,7 @@ Proof.
   ins.
   desf.
   assert (C: total_width x <= w /\ total_width y <= w).
-  { unfold fun_correct in F.
-    desf.
-    unfold fun_correct2 in F2.
-    admit. (*
-    apply F2; auto.*) }
+  {  admit. }
   desf.
   generalize dependent lst.
   induction lst'; simpls.
@@ -2491,110 +2502,7 @@ Proof.
   { apply IHlst'; auto. }
   auto.
 Admitted.
- 
-Lemma elem_in lst1 lst2 lst1' lst2' f w
-      (F: fun_correct f)
-      (H1: link_lists lst1 lst1')
-      (H2: link_lists lst2 lst2') :
-  link_lists (FormatTrivial.cross_general w f lst1 lst2) (FormatTrivial.cross_general w f lst1' lst2').
-Proof. 
-  unfold link_lists in *.
-  ins.
-  apply cross_general_elem in H; auto.
-  desf. 
-  assert (T: total_width x <= w /\ total_width y <= w).
-  { (*apply F; auto. }
-  desf.
 
-
-
-
-  assert (L1: exists b : t, In b lst1 /\ In b lst1' /\ total_width b <= w /\ height b = height x).
-  { apply H1.
-    split; auto. }
-  assert (L2: exists b : t, In b lst2 /\ In b lst2' /\ total_width b <= w /\ height b = height y).
-  { apply H2.
-    split; auto. }
-  clear H1.
-  clear H2.
-  clear H4.
-  clear H3.
-  desf.
-  exists (f b0 b).
-  repeat split.
-  { apply cross_general_elem; auto.
-    exists b0.
-    exists b.
-    repeat split; auto.
-    red in F.
-    desf.
-    unfold fun_correct2 in F2.
-    assert (total_width (f b0 b) <= total_width (f x y)).
-    { apply F2; auto. }
-    lia. }
-  { red in F.
-    desf.
-    unfold fun_correct2 in F2.
-    assert (total_width (f b0 b) <= total_width (f x y)).
-    { apply F2; auto. }
-    apply H. }
-  { admit.
-
-
-  }
-  apply F.
-  
-  
-    apply (F2 _ _ x y).
-    auto. }
-  
-  
-
-    
-
-  
-  apply is_exist_eq.
-  apply is_exist_eq in L1.
-  apply is_exist_eq in L2.
-  desf.
-  exists (f b0 b).
-  split.
-  { assert (H: total_width (f b0 b) <=? w = true).
-    { apply Nat.leb_le.
-      unfold fun_correct in F.
-      apply (F _ x _ y); auto. }
-    generalize H, L1, L2.
-    clear.
-    ins.
-    generalize dependent lst1'.
-    induction lst2'.
-    { done. }
-    ins.
-    desf.
-    { clear IHlst2'.
-      generalize dependent lst2'.
-      unfold FormatTrivial.cross_general.
-      ins.
-      rewrite filter_app.
-      apply in_app_l.
-      induction lst1'.
-      { done. }
-      ins.
-      desf.
-      { apply in_cons.
-        apply IHlst1'.
-        apply L1. }
-      apply IHlst1'.
-      apply L1. }
-    unfold FormatTrivial.cross_general in *.
-    simpl.
-    rewrite filter_app.
-    apply in_app_r.
-    apply IHlst2'; auto. }
-  apply F; auto.
-Qed. *)
-Admitted.
- 
 Lemma eval_cor w doc :
   evaluatorList w doc ⊆ evaluatorTrivial w doc.
 Proof.
@@ -2678,45 +2586,616 @@ Definition induction_cond (a: Doc) (b: Doc) (w: nat):=
   << A: pick_best_list (evaluatorList w a) w ⊆ pick_best_list (evaluatorTrivial w a) w >> /\
   << B: pick_best_list (evaluatorList w b) w ⊆ pick_best_list (evaluatorTrivial w b) w >>.
 
-Lemma elem_about w doc :
-  forall a, In a (evaluatorList w doc) -> (exists f x y, fun_correct f /\ f x y = a) \/
-                                          (height a = 1).
+Lemma elem_in_pareto w a f lst lst':
+  In a (pareto (FormatTrivial.cross_general w f lst lst')) ->
+  exists x y, In x lst /\ In y lst' /\ f x y = a.
+Admitted.
+
+Lemma above_assoc a b c :
+  add_above (add_above a b) c = add_above a (add_above b c).
+Proof.
+Admitted.
+
+Lemma format_destruct_tr s
+      (H: height (of_string s) > 1) :
+  exists u v, height u = 1 /\
+              height v > 0 /\
+              add_above u v = of_string s.
+Proof.
+  generalize dependent H.
+  unfold of_string.
+  assert (L: forall a, In a (map line (Format.split "\n" s)) -> height a = 1).
+  { generalize (Format.split "\n" s).
+    ins.
+    induction l; simpls.
+    desf.
+    apply IHl; auto. }
+  generalize dependent L.
+  generalize (map line (Format.split "\n" s)).
+  ins.
+  destruct l; simpls.
+  { lia. }
+  assert (height t = 1).
+  { apply L; auto. }
+  destruct l; simpls.
+  { unfold add_above in H.
+    simpls.
+    lia. }
+  rewrite above_assoc in H.
+  rewrite above_assoc.
+  assert (height t0 >= 1).
+  { assert (height t0 = 1).
+    { apply L; auto. }
+    lia. }
+  assert (R: forall a : Format.t, t = a \/ In a l -> height a = 1).
+  { ins.
+    apply L.
+    desf; auto. }
+  clear L.
+  generalize dependent t0.
+  generalize dependent t.
+  induction l.
+  { ins.
+    exists t.
+    exists t0.
+    repeat split.
+    { apply R; auto. }
+    lia. }
+  ins.
+  rewrite above_assoc.
+  rewrite (above_assoc t t0 a). 
+  apply IHl; auto.
+  { ins.
+    desf; auto. }
+  { rewrite above_assoc in H.
+    rewrite above_assoc in H.
+    apply H. }
+  unfold add_above.
+  unfold height in *.
+  desf.
+  all: lia.
+Qed.
+
+Lemma format_destruct w doc :
+  forall a, In a (evaluatorTrivial w doc) /\ height a > 1 ->
+            exists u v, height u = 1 /\ height v > 0 /\ add_above u v = a. 
 Proof.
   induction doc.
-  all: simpls.
   { ins.
     desf.
-    destruct (height (of_string s) =? 1) eqn:E1.
-    { apply beq_nat_true in E1.
-      auto. }
-    apply beq_nat_false in E1.
-    apply or_introl.
-    generalize dependent E1.
-    unfold of_string.
-    generalize (map line (Format.split "\n" s)).
-    ins.
+    apply format_destruct_tr; auto. }
+  { ins.
+    admit. }
+  { ins.
+Admitted.          
+
+Lemma pareto_less lst :
+  forall a, In a lst -> exists b, In b (pareto lst) /\ is_less_than b a.
+Admitted.    
+
+Lemma format_height_tr w doc :
+  forall a, In a (evaluatorTrivial w doc) -> height a = 1 \/ height a > 1.
+Admitted.
+
+Lemma format_height_lst w doc :
+  forall a, In a (evaluatorList w doc) -> height a = 1 \/ height a > 1.
+
+Admitted.
+
+Lemma beside_height_one a b
+      (H1: height a = 1)
+      (H2: height b = 1) : height (add_beside a b) = 1.
+Admitted.
+
+Lemma eval_height_one w doc :
+  forall a, In a (evaluatorTrivial w doc) /\ height a = 1 ->
+            exists b, In b (evaluatorList w doc) /\
+                      height b = 1 /\
+                      first_line_width b <= first_line_width a.
+Admitted.
+
+Lemma in_destruct (a:t) lst : In a lst \/ ~ In a lst.
+Proof.
+  induction lst; auto.
+  rewrite not_in_cons.
+  rewrite in_cons_iff.
+  desf; auto.
+Admitted.  
+
+Lemma not_In (a:t) l r : ~ In a (l ++ r) <-> ~ In a l /\ ~ In a r. 
+Proof.
+  split.
+  { ins.
     induction l.
     { simpls.
-      exists add_beside.
-      exists empty.
-      exists empty.
-      split.
-      { apply beside_correct. }
-      unfold empty.
-      unfold add_beside.
-      simpls. }
+      auto. }
+    rewrite <- app_comm_cons in H.
+    apply not_in_cons in H.
+    desf.
+    rewrite not_in_cons.
+    apply and_assoc.
+    split; auto. }
+  ins.
+  desf.
+  induction l.
+  { simpls. }
+  rewrite <- app_comm_cons.
+  apply not_in_cons.
+  apply not_in_cons in H.
+  desf.
+  split; auto.
+Qed.    
+
+Lemma pareto_exist_less b lst
+      (H1: In b lst)
+      (H2: ~ In b (pareto lst)) :
+  exists a, In a (pareto lst) /\ is_less_than a b = true.
+Admitted.
+
+Lemma pareto_middle_rem a lst
+      (H1: In a lst)
+      (H2: ~ In a (pareto lst)) :
+  exists l r, lst = l ++ a::r /\ pareto lst = pareto (l ++ r).
+Proof. 
+  assert (exists l r, lst = l ++ a::r).
+  { apply in_split; auto. }
+  desf.
+  exists l.
+  exists r.
+  split; auto.
+  destruct (is_less_exist a l) eqn:E1.
+  { apply pareto_ins_elem_exist; auto. } 
+  assert (is_less_exist a r = true).
+  { clear H1.
+    induction r using rev_ind.
+    { rewrite linear_pareto_not_exist in H2; auto.
+      assert (~ In a (pareto_by_elem a (pareto l) ++ [a]) -> False).
+      { generalize (pareto_by_elem a (pareto l)).
+        ins.
+        induction l0; rels. }
+      done. }
+    apply is_exist_cons_all.
     simpls.
-    clear IHl.
-    clear E1.
-    assert (add_above empty a = a); simpls.
-    rewrite H.
+    unfold flip.
+    rewrite orb_false_r.
+    destruct (in_destruct a (pareto (l ++ a :: r))).
+    { clear IHr.
+      generalize H, H2.
+      clear.
+      rewrite app_comm_cons.
+      rewrite app_assoc.
+      generalize (l ++ a :: r) as lst.
+      ins.
+      apply or_intror.
+      destruct (is_less_exist x lst) eqn:E1.
+      { rewrite linear_pareto_exist in H2; auto. }
+      rewrite linear_pareto_not_exist in H2; auto.
+      generalize H, H2.
+      clear.
+      generalize (pareto lst) as l.
+      ins.
+      induction l.
+      { simpls. }
+      simpl in H.
+      desf.
+      { destruct (is_less_than x a) eqn:E1.
+        { rewrite par_elem2_less in H2; auto. }
+        rewrite par_elem2_not_less in H2; auto.
+        rewrite <- app_comm_cons in H2.
+        apply not_in_cons in H2.
+        desf. }
+      apply IHl; auto.
+      destruct (is_less_than x a0) eqn:E1.
+      { rewrite par_elem2_less in H2; auto. }
+      rewrite par_elem2_not_less in H2; auto.
+      rewrite <- app_comm_cons in H2.
+      apply not_in_cons in H2.
+      desf. }
+    rewrite IHr; auto. }
+  clear H1.
+  assert (exists b, In b r /\ is_less_than a b = false /\ is_less_than b a = true).
+  { assert (~ In a (pareto (a :: r))).
+    { clear H.
+      induction r using rev_ind.
+      { rewrite linear_pareto_not_exist in H2; auto.
+        apply not_In in H2.
+        desf. }
+      rewrite app_comm_cons.
+      rewrite app_comm_cons in H2.
+      rewrite app_assoc in H2.
+      destruct (is_less_exist x (a :: r)) eqn:E2.
+      { rewrite linear_pareto_exist; auto.
+        apply IHr.
+        rewrite linear_pareto_exist in H2; auto.
+        apply is_exist_cons_all; auto. }
+      rewrite linear_pareto_not_exist; auto.
+      destruct (is_less_exist x l) eqn:E3.
+      { rewrite linear_pareto_exist in H2.
+        { apply is_exist_not_cons_alt in E2.
+          desf.
+          apply not_In.
+          split.
+          { assert (~ In a (pareto (a :: r))).
+            { apply IHr; auto. }
+            generalize H.
+            clear.
+            generalize (pareto (a::r)).
+            ins.
+            induction l.
+            { simpls. }
+            apply not_in_cons in H.
+            desf.
+            destruct (is_less_than x a0) eqn:E1.
+            { rewrite par_elem2_less; auto. }
+            rewrite par_elem2_not_less; auto.
+            apply not_in_cons; auto. }
+          apply not_in_cons.
+          split; auto.
+          assert (a = x -> False).
+          { ins.
+            rewrite H in E2.
+            rewrite is_less_than_reflexivity in E2.
+            discriminate E2. }
+          done. }
+        apply is_exist_cons_all; auto. }
+      rewrite linear_pareto_not_exist in H2.
+      { destruct (is_less_than x a) eqn:E4.
+        { apply not_In in H2.
+          desf.
+          apply not_In.
+          split.
+          { destruct (in_destruct a (pareto (a::r))).
+            { generalize E4.
+              clear.
+              generalize (pareto (a::r)).
+              ins.
+              induction l; auto.
+              destruct (is_less_than x a0) eqn:E1.
+              { rewrite par_elem2_less; auto. }
+              rewrite par_elem2_not_less; auto.
+              apply not_in_cons.
+              split.
+              { assert (a = a0 -> False).
+                { ins.
+                  rewrite <- H in E1.
+                  rewrite E1 in E4.
+                  discriminate E4. }
+                done. }
+              apply IHl. }
+            generalize H.
+            clear.
+            generalize (pareto (a::r)).
+            ins.
+            induction l; auto.
+            apply not_in_cons in H.
+            desf.
+            destruct (is_less_than x a0) eqn:E1.
+            { rewrite par_elem2_less; auto. }
+            rewrite par_elem2_not_less; auto.
+            apply not_in_cons.
+            split; auto. }
+          apply not_in_cons.
+          split; auto.
+          apply is_exist_not_cons_alt in E2.
+          desf.
+          assert (a = x -> False).
+          { ins.
+            rewrite H in E2.
+            rewrite is_less_than_reflexivity in E2.
+            discriminate E2. }
+          done. }
+        apply not_In in H2.
+        desf.
+        destruct (in_destruct a (pareto (l ++ a :: r))).
+        { assert (False).
+          { generalize E4, H, H2.
+            clear.
+            generalize (pareto (l ++ a::r)).
+            intro lst. ins.
+            induction lst; auto.
+            apply in_inv in H.
+            desf.
+            { rewrite par_elem2_not_less in H2; auto.
+              apply not_in_cons in H2.
+              desf. }
+            apply IHlst; auto.
+            destruct (is_less_than x a0) eqn:E1.
+            { rewrite par_elem2_less in H2; auto. }
+            rewrite par_elem2_not_less in H2; auto.
+            apply not_in_cons in H2.
+            desf. }
+          done. }
+        assert (~ In a (pareto (a :: r))).
+        { apply IHr; auto. }
+        generalize E4, H1.
+        clear.
+        generalize (pareto (a::r)).
+        ins.
+        apply not_In.
+        split.
+        { induction l; auto.
+          apply not_in_cons in H1.
+          desf.
+          destruct (is_less_than x a0) eqn:E1.
+          { rewrite par_elem2_less; auto. }
+          rewrite par_elem2_not_less; auto.
+          apply not_in_cons.
+          split; auto. }
+        apply not_in_cons.
+        split; auto.
+        assert (a = x -> False).
+        { ins.
+          rewrite H in E4.
+          rewrite is_less_than_reflexivity in E4.
+          discriminate E4. }
+        done. }
+      apply is_exist_not_cons_all.
+      rewrite is_exist_not_cons_alt.
+      rewrite is_exist_not_cons_alt in E2.
+      desf. }
+    generalize H0.
+    clear.
+    ins.
+    induction r using rev_ind.
+    { simpls.
+      apply not_or_and in H0.
+      desf. }
+    rewrite app_comm_cons in H0.
+    destruct (is_less_exist x (a::r)) eqn:E1.
+    { rewrite linear_pareto_exist in H0; auto.
+      assert (exists b : t, In b r /\ is_less_than a b = false /\ is_less_than b a = true).
+      { apply IHr; auto. }
+      desf.
+      exists b.
+      repeat split; auto.
+      apply in_app_l; auto. }
+    rewrite linear_pareto_not_exist in H0; auto.
+    apply is_exist_not_cons_alt in E1.
+    desf.
+    destruct (is_less_than x a) eqn:E2.
+    { exists x.
+      repeat split; auto.
+      apply in_app_r.
+      simpls.
+      auto. }
+    assert (~ In a (pareto (a :: r))).
+    { clear IHr.
+      apply not_In in H0.
+      desf.
+      generalize H0, E2.
+      clear.
+      generalize (pareto (a::r)).
+      ins.
+      induction l; auto.
+      apply not_in_cons.
+      split.
+      { assert (a = a0 -> False).
+        { intro.
+          rewrite <- H in H0.
+          rewrite par_elem2_not_less in H0; auto.
+          apply not_in_cons in H0.
+          desf. }
+        done. }
+      apply IHl.
+      destruct (is_less_than x a0) eqn:E1.
+      { rewrite par_elem2_less in H0; auto. }
+      rewrite par_elem2_not_less in H0; auto.
+      apply not_in_cons in H0.
+      desf. }
+    assert (exists b : t, In b r /\ is_less_than a b = false /\ is_less_than b a = true).
+    { apply IHr; auto. }
+    desf.
+    exists b.
+    repeat split; auto.
+    apply in_app_l.
+    apply H1. }
+  desf.
+  generalize H0, H1, H3.
+  clear.
+  ins.
+  assert (pareto (a::r) = pareto r).
+  { generalize dependent b.
+    induction r using rev_ind; ins.
+    apply in_app_or in H0.
+    simpls.
+    rewrite app_comm_cons.
+    desf.
+    { rewrite pareto_linear_fst.
+      rewrite (IHr b); auto.
+      rewrite <- pareto_linear_fst.
+      reflexivity. }
+    destruct (is_less_exist b r) eqn:E1.
+    { repeat rewrite linear_pareto_exist; auto.
+      { apply is_exist_eq in E1.
+        desf.
+        apply (IHr b0); auto.
+        { destruct (is_less_than a b0) eqn:E2; auto.
+          rewrite (is_less_than_transitivity _ b0) in H1; auto. }
+        apply (is_less_than_transitivity _ b); auto. }
+      apply is_exist_cons_alt; auto. }
+    repeat rewrite linear_pareto_not_exist; auto.
+    { rewrite pareto_by_elem_pareto_swap.
+      rewrite par_elem2_less; auto.
+      rewrite <- pareto_by_elem_pareto_swap.
+      reflexivity. }
+    apply is_exist_not_cons_alt; auto. }
+  rewrite pareto_linear.
+  rewrite H.
+  rewrite <- pareto_linear.
+  reflexivity.
+Qed.             
+
+Lemma eval_correct_fmt a doc w
+      (H: In a (evaluatorTrivial doc w)) : format_correct a.
+Admitted.
+
+Lemma exist_doc_pareto_eq w lst
+      (P: forall a, In a lst -> total_width a <= w)
+      (H: pareto lst = lst) :
+  exists doc, evaluatorList w doc = lst.
+Admitted.  
+ 
+Lemma fun_assoc_l n m f g a b
+      (H1: fun_comb f n)
+      (H2: fun_comb g m) :
+  exists h k y, fun_comb h k /\ forall x, f (g x a) b = h x y.
+Proof.
+Admitted.
+
+Lemma fun_assoc_r n m f g a b
+      (H1: fun_comb f n)
+      (H2: fun_comb g m) :
+  exists h k x, fun_comb h k /\ forall y, f a (g b y) = h x y.
+Admitted.
+
+Inductive Fmt : Type :=
+  | Base
+  | Id (fmt: t)
+  | Indent (t: nat) (f: Fmt)
+  | Beside (f: Fmt) (f: Fmt)
+  | Above (f: Fmt) (f: Fmt)
+  | Fill (f: Fmt) (f: Fmt) (s: nat).
+
+Fixpoint constructFmt (fmt: Fmt) (base: t): t:=
+  match fmt with
+  | Base       => base 
+  | Id a       => a
+  | Indent n a => indent' n (constructFmt a base)
+  | Beside a b => add_beside (constructFmt a base) (constructFmt b base)
+  | Above a b  => add_above (constructFmt a base) (constructFmt b base)
+  | Fill a b n => add_fill (constructFmt a base) (constructFmt b base) n
+  end.
+
+Lemma format_less fmt a b w
+      (H: is_less_than a b = true)
+      (B: total_width (constructFmt fmt b) <= w) : total_width (constructFmt fmt a) <= w.
+Proof.
+  induction fmt.
+  { simpls.
     admit. }
-Admitted.   
+  { simpls. }
+  { simpls.
+    admit. }
+  { simpls.
+Admitted.
+
+(*
+Lemma eval_less_exist_h w doc a
+      (A: In a (evaluatorTrivial w doc))
+      (B: ~ In a (evaluatorList w doc))
+      (C: total_width (constructFmt fmt a) <= w) :
+  exists b, total_width (constructFmt fmt b) <= w) /\
+            height b <= height a /\
+            In b (evaluatorList w doc).
+*)
+Lemma eval_less_exist_h w doc a
+      (A: In a (evaluatorTrivial w doc))
+      (B: ~ In a (evaluatorList w doc)) :
+  exists b, (forall n m f g u v, fun_comb f n /\
+                                 fun_comb g m /\
+                                 format_correct u /\
+                                 format_correct v /\
+                                 total_width (f u (g a v)) <= w ->
+                                 total_width (f u (g b v)) <= w) /\
+            height b <= height a /\
+            In b (evaluatorList w doc).
+Proof.
+  generalize dependent a.
+  induction doc; ins.
+  { admit. }
+  { apply cross_general_elem in A.
+    desf.
+    unfold FormatTrivial.besideDoc.
+    unfold besideDoc in B.
+    rewrite <- cross_general_eq in B.    
+    destruct (in_destruct x (evaluatorList w doc1)).
+    { destruct (in_destruct y (evaluatorList w doc2)).
+      { clear IHdoc1. clear IHdoc2.
+        apply pareto_exist_less in B.
+        { desf.
+          exists a.
+          split.
+          { ins.
+            desf.
+            apply (fun_correct (add_beside x y) n m); auto.
+            split.
+            { admit. }
+            auto. }
+          split.
+          { admit. }
+          unfold besideDoc.
+          rewrite <- cross_general_eq.
+          apply B. }
+        apply cross_general_elem.
+        exists x.
+        exists y.
+        repeat split; auto. }
+      admit. }
+    destruct (in_destruct y (evaluatorList w doc2)).
+    { admit. }
+    assert (exists k : t,
+             (forall (n m : nat) (f g : t -> t -> t) (u v : t),
+              fun_comb f n /\
+              fun_comb g m /\
+              format_correct u /\ format_correct v /\ total_width (f u (g x v)) <= w ->
+              total_width (f u (g k v)) <= w) /\
+             height k <= height x /\ In k (evaluatorList w doc1)).
+    { apply IHdoc1; auto. }
+    assert (exists c : t,
+             (forall (n m : nat) (f g : t -> t -> t) (u v : t),
+              fun_comb f n /\
+              fun_comb g m /\
+              format_correct u /\ format_correct v /\ total_width (f u (g y v)) <= w ->
+              total_width (f u (g c v)) <= w) /\
+             height c <= height y /\ In c (evaluatorList w doc2)).
+    { apply IHdoc2; auto. }
+    clear IHdoc1. clear IHdoc2.
+    desf.
+    assert (total_width (add_beside k c) <= w).
+    { admit. }
+    destruct (in_destruct (add_beside k c) (besideDoc w (evaluatorList w doc1) (evaluatorList w doc2))).
+    { exists (add_beside k c).
+      split.
+      { ins.
+        desf.
+        assert (exists h i a, fun_comb h i /\ forall x, g (add_beside x y) v = h x a).
+        { apply (fun_assoc_l m n); auto.
+          unfold fun_comb; auto. }
+        desf.
+        rewrite H15.
+
+        
+        rewrite (fun_assoc_r g add_beside m n) in H13; auto.
+        { rewrite (fun_assoc_r g add_beside m n); auto.
+          { apply (H1 n m).
+            split; auto.
+            split; auto.
+            split; auto.
+            split.
+            { admit. }
+            rewrite (fun_assoc_l f g n m) in H13; auto.
+            rewrite (fun_assoc_l f g n m); auto.
+            apply (H2 m n).
+            split; auto.
+            split.
+            { unfold fun_comb; auto. }
+            split; auto.
+            admit. }
+          unfold fun_comb; auto. }
+        unfold fun_comb; auto. }
+      split; auto.
+      admit. }
+    
+            
+            
+
+
+          
+Admitted. 
 
 Lemma eval_less_exist w doc :
   forall b, In b (evaluatorTrivial w doc) ->
-            exists a, In a (evaluatorList w doc) /\ height a <= height b /\
-                      exists g, g a = total_width a /\ g a <= total_width b.
+            exists a, In a (evaluatorList w doc) /\ height a <= height b.
 Proof.
   induction doc.
   { ins.
@@ -2781,22 +3260,7 @@ Proof.
   repeat split; auto.
   { admit. }
   apply F.
-Admitted.
-  
-Lemma incl_in (a:t) lst lst'
-      (H: In a lst)
-      (I: lst ⊆ lst') : In a lst'.
-Proof.
-  induction lst; simpls.
-  desf.
-  { unfold incl in I.
-    apply (I a).
-    simpls; auto. }
-  apply IHlst; auto.
-  unfold incl in *.
-  ins.
-  apply (I a1); auto.
-Qed.    
+Admitted.  
 
 Lemma elem_in' a b f w
       (F: fun_correct f w) :
@@ -2825,7 +3289,7 @@ Proof.
   apply (incl_in _ (evaluatorList w b)); auto.
   apply eval_cor.  
 Qed.  
-  
+
 Lemma pareto_beside a b w :
     pick_best_list (FormatList.besideDoc w (evaluatorList w a) (evaluatorList w b)) w ⊆
     pick_best_list (FormatTrivial.besideDoc w (evaluatorTrivial w a) (evaluatorTrivial w b)) w.
