@@ -1047,6 +1047,7 @@ Lemma get_height_exist a x w lst
   get_min_height lst w (Some (height a)) =
   get_min_height (lst ++ [x]) w (Some (height a)).
 Proof.
+  (*
   apply is_exist_eq in H.
   desf.
   generalize dependent b.
@@ -1101,6 +1102,8 @@ Proof.
   apply andb_true_iff; split.
   all: apply NPeano.Nat.leb_le; auto.
 Qed.    
+   *)
+Admitted.
 
 Lemma height_some_none a b lst w
       (H: total_width b <= w)
@@ -1133,7 +1136,7 @@ Qed.
 Lemma pick_is_less' a b lst w
       (H: is_less_than a b = true) :
   pick_best_list (a :: lst) w ⊆ pick_best_list ((a :: lst) ++ [b]) w.
-Proof.
+Proof. (*
   simpls.
   destruct (total_width a <=? w) eqn:E2.
   { simpl.
@@ -1168,12 +1171,13 @@ Proof.
   desf.
   simpls.
   lia.
-Qed.
+Qed. *)
+Admitted.
 
 Lemma pick_is_less'' a b lst w
       (H: is_less_than b a = true) :
   pick_best_list (lst ++ [b]) w ⊆ pick_best_list ((a :: lst) ++ [b]) w.
-Proof.
+Proof. (*
   unfold pick_best_list.
   simpls.
   destruct (total_width a <=? w) eqn:E1.
@@ -1195,12 +1199,14 @@ Proof.
     lia. }
   desf.
 Qed.
+        *)
+Admitted.
 
 Lemma pareto_elem_height a lst w :
       forall b, total_width b <= w ->
   get_min_height (lst ++ [a]) w (Some (height b)) =
   get_min_height (pareto_by_elem a lst ++ [a]) w (Some (height b)).
-Proof.
+Proof. (*
   induction lst; auto.
   destruct (is_less_than a a0) eqn:E1.
   { intros.
@@ -1245,12 +1251,13 @@ Proof.
     apply Nat.leb_gt in E2.
     rewrite min_leb; auto. }
   apply IHlst; auto.
-Qed.  
+Qed.  *)
+Admitted.
 
 Lemma pick_height_none lst a w :
   get_min_height (pareto_by_elem a lst ++ [a]) w None =
   get_min_height (lst ++ [a]) w None.
-Proof.
+Proof. (*
   induction lst; auto.
   destruct (is_less_than a a0) eqn:E1.
   { rewrite par_elem2_less; auto.
@@ -1276,6 +1283,8 @@ Proof.
   apply leb_complete in Heq.
   rewrite <- pareto_elem_height; auto.
 Qed.    
+        *)
+Admitted.
 
 Lemma elem_in_pick n a lst w
       (H: total_width a <= w)
@@ -1473,7 +1482,7 @@ Qed.
 Lemma pick_height_link lst x w
       (N: is_less_exist x lst = true) :
   get_min_height (lst ++ [x]) w None = get_min_height lst w None.
-Proof.
+Proof. (*
   induction lst.
   { simpls. }
   apply is_exist_cons_alt in N.
@@ -1503,7 +1512,8 @@ Proof.
   { symmetry.
     apply get_height_exist; auto. }
   apply IHlst; auto.    
-Qed.
+Qed. *)
+Admitted.
 
 
 Lemma cross_general_nil f w lst :
@@ -1775,7 +1785,7 @@ Lemma height_discr'' lst w a b
       (T: get_min_height lst w None = Some (height b))
       (E: height a <> height b)
       (H: is_less_than a b = true) : False.
-Proof.
+Proof. (*
   unfold is_less_than in H.
   andb_split.
   apply leb_complete in H0.
@@ -1816,7 +1826,8 @@ Proof.
       lia. }
     apply (IHlst I a1); auto. }
   apply IHlst; auto.
-Qed.
+Qed. *)
+Admitted.
     
 Lemma height_incl_elem a lst lst' w
       (I: (a :: lst) ⊆ lst')
@@ -2026,7 +2037,7 @@ Lemma height_remove lst lst' w
       (E: forall a, In a lst' -> is_less_exist a lst = true)
       (I: pick_best_list lst w ⊆ pick_best_list lst' w) :
   get_min_height lst w None = get_min_height lst' w None.
-Proof.
+Proof. (*
   unfold pick_best_list in I at 2.
   destruct (height_values lst' w).
   { assert (L: pick_best_list lst w ⊆ nil -> get_min_height lst w None = None).
@@ -2118,7 +2129,8 @@ Proof.
       done. }
     apply I. }
   apply IHlst; auto.
-Qed.
+Qed. *)
+Admitted.
 
 Lemma height_list_only a lst w
       (H: total_width a <=? w = true) :
@@ -3066,17 +3078,119 @@ Fixpoint constructFmt (fmt: Fmt) (base: t): t:=
   | Fill a b n => add_fill (constructFmt a base) (constructFmt b base) n
   end.
 
-Lemma format_less fmt a b w
-      (H: is_less_than a b = true)
-      (B: total_width (constructFmt fmt b) <= w) : total_width (constructFmt fmt a) <= w.
+Lemma less_operators a b
+      (H: is_less_than a b = true) :
+  height a <= height b /\
+  first_line_width a <= first_line_width b /\
+  middle_width a <= middle_width b /\
+  last_line_width a <= last_line_width b.
 Proof.
-  induction fmt.
-  { simpls.
+  unfold is_less_than in H.
+  unfold less_components in H.
+  desf.
+  all: andb_split.
+  all: apply leb_complete in H0.
+  all: apply leb_complete in H1.
+  all: apply leb_complete in H2; auto.
+  all: apply leb_complete in H; auto.
+Qed.    
+
+Lemma last_line_less a b fmt
+      (H: is_less_than a b = true) :
+  last_line_width (constructFmt fmt a) <= last_line_width (constructFmt fmt b).
+Proof.
+  apply less_operators in H.
+  desf.
+  induction fmt; simpls.
+  { admit. }
+  { admit. }
+  { admit. }
+  { admit. }
+Admitted.   
+
+Lemma first_line_less a b fmt
+      (H: is_less_than a b = true) :
+  first_line_width (constructFmt fmt a) <= first_line_width (constructFmt fmt b).
+Proof.
+  apply less_operators in H.
+  desf.
+  induction fmt; simpls.
+  { admit. }
+  { admit. }
+  { admit. }
+  { admit. }
+Admitted.
+
+Lemma format_less fmt a b
+      (F1: format_correct a)
+      (F2: format_correct b)
+      (H: is_less_than a b = true) :
+  total_width (constructFmt fmt a) <= total_width (constructFmt fmt b).
+Proof.
+  induction fmt; simpls.
+  { admit. }
+  { admit. }
+  { assert (total_width (add_beside (constructFmt fmt1 a) (constructFmt fmt2 a)) <=
+            total_width (add_beside (constructFmt fmt1 b) (constructFmt fmt2 a))).
+    { clear IHfmt2.
+      generalize (constructFmt fmt2 a) as c.
+      ins.
+      assert (last_line_width (constructFmt fmt1 a) <= last_line_width (constructFmt fmt1 b)).
+      { apply last_line_less; auto. }
+      generalize H0, IHfmt1.
+      clear.
+      generalize (constructFmt fmt1 b).
+      generalize (constructFmt fmt1 a).
+      ins.
+      admit. }
+    apply (Nat.le_trans _ (total_width (add_beside (constructFmt fmt1 b) (constructFmt fmt2 a)))); auto.
+    clear IHfmt1.
+    clear H0.
+    generalize (constructFmt fmt1 b) as c.
+    ins.
+    generalize IHfmt2.
+    clear.
+    generalize (constructFmt fmt2 b).
+    generalize (constructFmt fmt2 a).
+    ins.
     admit. }
-  { simpls. }
-  { simpls.
+  { generalize IHfmt1, IHfmt2.
+    clear.
+    generalize (constructFmt fmt1 a).
+    generalize (constructFmt fmt1 b).
+    generalize (constructFmt fmt2 a).
+    generalize (constructFmt fmt2 b).
+    ins.
     admit. }
-  { simpls.
+  { assert (total_width (add_fill (constructFmt fmt1 a) (constructFmt fmt2 a) s) <=
+            total_width (add_fill (constructFmt fmt1 b) (constructFmt fmt2 a) s)).
+    { clear IHfmt2.
+      generalize (constructFmt fmt2 a) as c.
+      ins.
+      assert (last_line_width (constructFmt fmt1 a) <= last_line_width (constructFmt fmt1 b)).
+      { apply last_line_less; auto. }
+      generalize H0, IHfmt1.
+      clear.
+      generalize (constructFmt fmt1 b).
+      generalize (constructFmt fmt1 a).
+      ins.
+      admit. }
+    apply (Nat.le_trans _ (total_width (add_fill (constructFmt fmt1 b) (constructFmt fmt2 a) s))); auto.
+    clear IHfmt1.
+    clear H0.
+    generalize (constructFmt fmt1 b) as c.
+    ins.
+    generalize IHfmt2.
+    clear.
+    generalize (constructFmt fmt2 b).
+    generalize (constructFmt fmt2 a).
+    ins.
+    admit.
+
+
+
+
+    
 Admitted.
 
 (*

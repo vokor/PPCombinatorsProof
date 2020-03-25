@@ -10,11 +10,19 @@ Record t : Type := T {
   to_text          : nat -> string -> string
 }.
 
-Definition is_less_than  (G:t) (G':t): bool := 
-      (G.(height) <=? G'.(height)) &&
-      (G.(first_line_width) <=? G'.(first_line_width)) && 
-      (G.(middle_width) <=? G'.(middle_width)) &&
-      (G.(last_line_width) <=? G'.(last_line_width)).
+Definition less_components (G:t) (G':t): bool :=
+  (G.(height) <=? G'.(height)) &&
+  (G.(first_line_width) <=? G'.(first_line_width)) && 
+  (G.(middle_width) <=? G'.(middle_width)) &&
+  (G.(last_line_width) <=? G'.(last_line_width)).
+
+Definition is_less_than  (G:t) (G':t): bool :=
+  match G.(height), G'.(height) with
+  | 1,1  => less_components G G'
+  | _,1  => false
+  | 1,_  => false
+  | _,_  => less_components G G'
+  end.
 
 Definition empty: t := T 0 0 0 0 (fun s t => t).
 
