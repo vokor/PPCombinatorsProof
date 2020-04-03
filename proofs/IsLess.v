@@ -2,6 +2,7 @@ From hahn Require Import Hahn.
 Require Import FormatTrivial.
 Require Import FormatList.
 Require Import Format.
+Require Import FuncCorrect.
 Require Import Coq.Program.Basics.
 Require Import Coq.Lists.List.
 Require Import Coq.ssr.ssrbool.
@@ -150,28 +151,38 @@ Proof.
   etransitivity; eauto.
 Qed.
 
-Ltac andb_split :=
-  repeat match goal with
-         | H : _ && _ = true |- _ => apply andb_true_iff in H; destruct H
-         end.
+Require Import Lia.
 
-Lemma is_less_than_transitivity a b c
+Lemma is_less_than_trans a b c
       (AB : is_less_than a b = true)
       (BC : is_less_than b c = true) :
     is_less_than a c = true.
 Proof.
   unfold is_less_than in *.
-  andb_split.
-  repeat (apply andb_true_iff; split).
-  all: eapply nat_leb_trans; eauto.
+  unfold less_components in *.
+  desf.
+  all: andb_split.
+  all: apply leb_complete in H.
+  all: apply leb_complete in H0.
+  all: apply leb_complete in H1.
+  all: apply leb_complete in H2.
+  all: apply leb_complete in H3.
+  all: apply leb_complete in H4.  
+  all: apply leb_complete in H5.
+  all: apply leb_complete in H6.   
+  all: repeat (apply andb_true_iff; split).
+  all: apply Nat.leb_le; lia.
 Qed.
-
-Lemma is_less_than_reflexivity :
+Lemma is_less_than_refl :
   forall a, is_less_than a a = true.
 Proof.
-  intros. unfold is_less_than.
-  rewrite !PeanoNat.Nat.leb_refl. auto.
-Qed.
+  intros.
+  unfold is_less_than in *.
+  unfold less_components in *.
+  desf.
+  all: repeat (apply andb_true_iff; split).
+  all: apply Nat.leb_le; lia.
+Qed. 
 
 Lemma is_less_than_get_false a b c
       (H1: is_less_than a b = true)
@@ -179,7 +190,7 @@ Lemma is_less_than_get_false a b c
   is_less_than b c = false.
 Proof.
   destruct (is_less_than b c) eqn:E1; auto.
-  rewrite (is_less_than_transitivity a b c) in H2; auto.
+  rewrite (is_less_than_trans a b c) in H2; auto.
 Qed.
    
 Lemma is_less_exist_cont_true a b lst 
@@ -191,7 +202,7 @@ Proof.
   rewrite is_exist_cons_alt in B.
   destruct B as [C|C].
   { simpl. unfold flip.
-    rewrite C, (is_less_than_transitivity a0 a b); auto. }
+    rewrite C, (is_less_than_trans a0 a b); auto. }
   simpl. rewrite IHlst, C; auto.
   repeat rewrite orb_true_r.
   reflexivity.
@@ -205,27 +216,7 @@ Proof.
   rewrite is_exist_not_cons_alt in *.
   destruct B.
   destruct (is_less_than a0 a) eqn:E1; auto.
-  rewrite (is_less_than_transitivity a0 a b) in H; auto.
-Qed.
-
-Require Import Lia.
-
-Lemma is_less_width a b w
-      (H: is_less_than a b = true)
-      (A: total_width b <=? w = true) : total_width a <=? w = true.
-Proof.
-  apply leb_complete in A.
-  apply Nat.leb_le.
-  unfold is_less_than in H.
-  andb_split.
-  apply leb_complete in H0.
-  apply leb_complete in H1.
-  apply leb_complete in H2.
-  apply leb_complete in H.
-  unfold total_width in *.
-  desf.
-  simpls.
-  lia.
+  rewrite (is_less_than_trans a0 a b) in H; auto.
 Qed.
 
 Lemma is_less_exist_destruct x lst lst' :
@@ -459,12 +450,8 @@ Proof.
   rewrite H.
   auto.
 Qed.
-  
-Definition fun_correct (f: t -> t -> t) :=
-  forall a b c d, is_less_than a b = true /\ is_less_than c d = true -> is_less_than (f a c) (f b d) = true. 
 
 Require Import Lia.
-
 
 Lemma leb_le_eq_true x y z :
   x <= z <-> (x + y <=? z + y) = true.
@@ -490,49 +477,4 @@ Proof.
   apply leb_correct_conv.
   apply Nat.lt_nge in E1.
   apply plus_lt_compat_r; auto.
-Qed.
-
-Lemma indent'_linear a b sh :
-  is_less_than a b = is_less_than (indent' sh a) (indent' sh b).
-Proof.
-  symmetry.
-  destruct (is_less_than a b) eqn:E1.
-  { unfold is_less_than in *.
-    andb_split.
-    repeat (apply andb_true_iff;
-            unfold indent';
-            destruct a; destruct b;
-            simpl in *; split).
-    repeat (apply andb_true_iff; split); auto.
-    { eapply elimT in H2; [|apply Nat.leb_spec0].
-      apply leb_le_eq_true; auto. }
-    { eapply elimT in H1; [|apply Nat.leb_spec0].
-      apply leb_le_eq_true; auto. }
-    eapply elimT in H0; [|apply Nat.leb_spec0].
-    apply leb_le_eq_true; auto.
-  }
-  unfold is_less_than in *.
-  unfold indent'.
-  destruct (height a <=? height b) eqn:E2.
-  { destruct a; destruct b.
-    simpl in *. rewrite E2. simpl.
-    destruct (first_line_width + sh <=? first_line_width0 + sh) eqn:E3.
-    { simpl.
-      destruct (middle_width + sh <=? middle_width0 + sh) eqn:E4.
-      { simpl.
-        rewrite <- leb_le_eq_true in E3.
-        rewrite <- leb_le_eq_true in E4.
-        rewrite <- leb_eq.
-        destruct (first_line_width <=? first_line_width0) eqn:E5.
-        { destruct (middle_width <=? middle_width0) eqn:E6.
-          { simpl in E1. apply E1. }
-          apply leb_correct in E4. rewrite E4 in E6.
-          discriminate E6. }
-        apply leb_correct in E3. rewrite E3 in E5.
-          discriminate E5. }
-      auto. }
-    auto. }
-  destruct a; destruct b.
-  simpl in *. rewrite E2.
-  auto.
 Qed.
