@@ -10,11 +10,19 @@ Record t : Type := T {
   to_text          : nat -> string -> string
 }.
 
-Definition is_less_than  (G:t) (G':t): bool := 
-      (G.(height) <=? G'.(height)) &&
-      (G.(first_line_width) <=? G'.(first_line_width)) && 
-      (G.(middle_width) <=? G'.(middle_width)) &&
-      (G.(last_line_width) <=? G'.(last_line_width)).
+Definition less_components (G:t) (G':t): bool :=
+  (G.(height) <=? G'.(height)) &&
+  (G.(first_line_width) <=? G'.(first_line_width)) && 
+  (G.(middle_width) <=? G'.(middle_width)) &&
+  (G.(last_line_width) <=? G'.(last_line_width)).
+
+Definition is_less_than  (G:t) (G':t): bool :=
+  match G.(height), G'.(height) with
+  | 1,1  => less_components G G'
+  | _,1  => false
+  | 1,_  => false
+  | _,_  => less_components G G'
+  end.
 
 Definition empty: t := T 0 0 0 0 (fun s t => t).
 
@@ -28,15 +36,6 @@ Fixpoint sp n :=
     | S n' => append " " (sp n')
     end.
 
-Definition list_max (in_list : {in_list : list nat | nil <> in_list}) : nat :=
-  match in_list with
-  | exist _ x _ =>
-    match x with
-    | nil => 0 
-    | hd :: tl => fold_left max tl hd
-    end
-  end.
-
 Definition add_above (G:t) (G':t): t:=
   match G.(height), G'.(height) with
     | O, _ => G'
@@ -45,17 +44,14 @@ Definition add_above (G:t) (G':t): t:=
       let middle_with_new :=
          match G.(height), G'.(height) with
          | 1,1 => G.(first_line_width)
-         | 1,2 => G'.(first_line_width)
          | 1,_ => max G'.(first_line_width) G'.(middle_width)
          | 2,1 => G.(last_line_width)
-         | _,1 => max G.(middle_width) G.(last_line_width)
-         | _,_ => list_max (exist _ 
-                    (G.(middle_width)::
-                     G.(last_line_width)::
-                     G'.(first_line_width)::
-                     G'.(middle_width)::
-                     nil)
-                        (@nil_cons _ _ _))
+         | _,1 => max G.(last_line_width) G.(middle_width)
+         | 2,_ => max G.(last_line_width) (max G'.(first_line_width) G'.(middle_width))
+         | _,_ => max G.(middle_width)
+                  (max G.(last_line_width)
+                  (max G'.(first_line_width)
+                       G'.(middle_width)))
          end
       in 
          T
@@ -73,18 +69,14 @@ Definition add_beside (G:t) (G':t):t :=
     | _, _ => 
       let middle_width_new :=
          match G.(height), G'.(height) with
-         | 1,(1|2) =>  G.(first_line_width) + G'.(first_line_width)
-         | 1,_ => G.(first_line_width) + G'.(middle_width)
-         | 2,1 => G.(first_line_width)
-         | _,_ => match (andb (3 <=? G.(height)) (G'.(height) =? 1)) with
-            | true  => G.(middle_width)
-            | false => list_max (exist _ 
-                          (G.(middle_width)::
-                          (G.(last_line_width) + G'.(first_line_width))::
+         | 1,(1|2) => G.(first_line_width) + G'.(first_line_width)
+         | _,1     => G.(middle_width)
+         | 1,_     => G.(last_line_width) + G'.(middle_width)
+         | 2,_     => max (G.(last_line_width) + G'.(first_line_width))
                           (G.(last_line_width) + G'.(middle_width))
-                          ::nil)
-                               (@nil_cons _ _ _))
-            end
+         | _,_     => max G.(middle_width)
+                      (max (G.(last_line_width) + G'.(first_line_width))
+                           (G.(last_line_width) + G'.(middle_width)))
          end
       in
         let first_line_width_new :=
@@ -111,21 +103,13 @@ Definition add_fill (G:t) (G':t) (shift:nat) :t :=
          | 1,(1|2) => G.(first_line_width) + G'.(first_line_width)
          | 1,_ => shift + G'.(middle_width)
          | 2,1 => G.(first_line_width)
-         | 2,2 => list_max (exist _ 
-                              (G.(middle_width)::
-                              (G.(last_line_width) + G'.(first_line_width))::
-                              (shift + G'.(middle_width))::
-                               nil)
-                                 (@nil_cons _ _ _))
+         | 2,2 => G.(last_line_width) + G'.(first_line_width)
          | 2,_ => max (G.(last_line_width) + G'.(first_line_width)) (shift + G'.(middle_width))
          | _,1 => G.(middle_width)
          | _,2 => max G.(middle_width) (G.(last_line_width) + G'.(first_line_width))
-         | _,_ => list_max (exist _ 
-                                (G.(middle_width)::
-                                (G.(last_line_width) + G'.(first_line_width))::
-                                (shift + G'.(middle_width))::
-                                 nil)
-                                    (@nil_cons _ _ _))
+         | _,_ => max G.(middle_width)
+                  (max (G.(last_line_width) + G'.(first_line_width))
+                          (shift + G'.(middle_width)))
          end
       in
         let first_line_width_new :=
@@ -148,7 +132,6 @@ Definition add_fill (G:t) (G':t) (shift:nat) :t :=
               (fun s t => G.(to_text) s (G'.(to_text) (s + shift) t))
   end.
 
-
 Definition to_string (f:t) := 
   match f with
   | T _ _ _ _ to_text => to_text 0 EmptyString
@@ -156,14 +139,14 @@ Definition to_string (f:t) :=
 
 Definition total_width (f:t) := 
   match f with
-  | T _ fw m lw _ => list_max (exist _ (fw::m::lw::nil) (@nil_cons _ _ _))
+  | T _ fw m lw _ => max fw (max m lw)
   end.
 
 Definition split regexp :=
   let
    fix sp_helper pos s:=
      match s with
-     | EmptyString => nil
+     | EmptyString => EmptyString::nil
      | String _ s' =>
          match pos with
          | 0 =>
