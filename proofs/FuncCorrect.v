@@ -95,274 +95,191 @@ Proof.
   auto.
 Qed.
 
+Hint Unfold
+  triple_correct
+  format_correct
+  format_correct1
+  format_correct2
+  format_correct3
+  is_less_than'
+  is_less_than
+  less_components
+  : unfoldCorrectDb.
+
+Ltac zgz :=
+  match goal with
+  | H : 0 > 0 |- _ => inv H 
+  end.
+  (* all: repeat match goal with *)
+  (* | H : (1 = 2 -> _) |- _ => clear H *)
+  (* | H : 1 > 0 |- _ => clear H *)
+  (* | H : (1 = 1 -> ?X) |- _ => specialize (H eq_refl); desf *)
+  (* end. *)
+
+Ltac leb_simpl :=
+  repeat match goal with
+  | H : (_ <=? _) = true |- _ => apply leb_complete in H
+  end.
+
+Ltac zauto := auto; try by zgz.
+
 Lemma is_less_than'_trans a b c
-      (H: triple_correct a b c)
+      (H  : triple_correct a b c)
       (AB : is_less_than' a b = true)
       (BC : is_less_than' b c = true) :
     is_less_than' a c = true.
 Proof.
-  unfold triple_correct in H.
-  unfold format_correct in H.
-  unfold format_correct1 in H.
-  unfold format_correct2 in H.
-  unfold format_correct3 in H.
-  unfold is_less_than' in *.
-  unfold is_less_than in *.
-  unfold less_components in *.
+  repeat autounfold with unfoldCorrectDb in *.
   desf.
   all: andb_split.
-  all: apply leb_complete in H.
-  all: apply leb_complete in H0.
-  all: apply leb_complete in H1.
-  all: apply leb_complete in H2.
-  all: apply leb_complete in H3.
-  all: apply leb_complete in H4.
-  all: try apply leb_complete in H5.  
-  all: try apply leb_complete in H6.
+  all: leb_simpl.
+  all: zauto.
   all: repeat (apply andb_true_iff; split).
-  all: apply Nat.leb_le.
-  all: lia.
+  all: apply Nat.leb_le; auto.
+  all: etransitivity; eauto.
 Qed.
 
 Definition save_correct (f: t -> t -> t) :=
-  forall a b, format_correct a /\ format_correct b -> format_correct (f a b).
+  forall a b (FCA : format_correct a) (FCB : format_correct b),
+    format_correct (f a b).
 
 Definition save_width (f: t -> t -> t) :=
-  forall a b w, format_correct a /\
-                format_correct b /\
-                total_width (f a b) <= w -> total_width a <= w /\ total_width b <= w.
+  forall a b w (FCA : format_correct a)
+               (FCB : format_correct b)
+               (TWF : total_width (f a b) <= w),
+    total_width a <= w /\ total_width b <= w.
 
 Definition save_less (f: t -> t -> t) :=
-  forall a b c d, quad_correct a b c d /\
-                  is_less_than' a b = true /\
-                  is_less_than' c d = true -> is_less_than' (f a c) (f b d) = true.
+  forall a b c d
+         (QC   : quad_correct a b c d)
+         (LTAB : is_less_than' a b)
+         (LTCD : is_less_than' c d),
+    is_less_than' (f a c) (f b d).
 
-Definition fun_correct (f: t -> t -> t) := save_correct f /\ save_width f /\ save_less f.
+Definition fun_correct (f: t -> t -> t) :=
+  << SVC : save_correct f >> /\
+  << SWH : save_width   f >> /\
+  << SL  : save_less    f >>.
+
+Hint Unfold
+     format_correct
+     format_correct1
+     format_correct2
+     format_correct3
+  : unfoldCorrectDb.
+
+Hint Unfold
+     indent'
+     add_beside
+     add_fill
+     add_above
+  : unfoldAddDb.
+
+Ltac add_solver := 
+  repeat autounfold with unfoldCorrectDb in *;
+  desf; splits; ins;
+  repeat autounfold with unfoldAddDb in *;
+  desf; ins; zauto; lia.
 
 Lemma beside_format a b
-      (H1: format_correct a)
-      (H2: format_correct b) : format_correct (add_beside a b).
-Proof.
-  unfold format_correct in *.
-  unfold format_correct1 in *.
-  unfold format_correct2 in *.
-  unfold format_correct3 in *.
-  desf.
-  split.
-  { red.
-    ins.
-    unfold add_beside in *.    
-    desf; ins.
-    lia. 
-    lia.
-    lia. }
-  split.
-  { red.
-    unfold add_beside in *.
-    desf; ins.
-    all: lia. }
-  red.
-  ins.
-  unfold add_beside in *.
-  desf; ins.
-  all: lia.
-Qed.
+      (FCA : format_correct a)
+      (FCB : format_correct b) :
+  format_correct (add_beside a b).
+Proof. add_solver. Qed.
 
 Lemma fill_format a b n
       (H1: format_correct a)
       (H2: format_correct b) : format_correct (add_fill a b n).
-Proof.
-  unfold format_correct in *.
-  unfold format_correct1 in *.
-  unfold format_correct2 in *.
-  unfold format_correct3 in *.
-  desf.
-  split.
-  { red.
-    ins.
-    unfold add_fill in *.
-    desf; ins.
-    all: lia. }
-  split.
-  { red.
-    unfold add_fill in *.
-    desf; ins.
-    all: lia. }
-  red.
-  ins.
-  unfold add_fill in *.
-  desf; ins.
-  all: lia.
-Qed.
+Proof. add_solver. Qed.
 
 Lemma above_format a b
       (H1: format_correct a)
       (H2: format_correct b) : format_correct (add_above a b).
+Proof. add_solver. Qed.
+
+Lemma indent_format a n (H1: format_correct a) :
+  format_correct (indent' n a).
+Proof. add_solver. Qed.
+
+(* TODO: move to Format module. *)
+Lemma format_split_length_non_zero delim s :
+  length (Format.split delim s) > 0.
 Proof.
-  unfold format_correct in *.
-  unfold format_correct1 in *.
-  unfold format_correct2 in *.
-  unfold format_correct3 in *.
-  desf.
-  split.
-  { red.
-    ins.
-    unfold add_above in *.
-    desf; ins.
-    all: lia. }
-  split.
-  { red.
-    unfold add_above in *.
-    desf; ins.
-    all: lia. }
-  red.
-  ins.
-  unfold add_above in *.
-  desf; ins.
-  all: lia.
+  destruct s; unfold Format.split.
+  { simpls. }
+  destruct (index 0 delim (String a s)).
+  all: simpls.
+  lia.
 Qed.
 
 Lemma of_string_correct s : format_correct (of_string s).
 Proof.
-  ins.
-  unfold of_string.
-  assert (length (map line (Format.split "\n" s)) > 0).
-  { assert (length (Format.split "\n" s) > 0).
-    { assert (forall (a:string) lst, length (a::lst) > 0).
-      { ins.
-        lia. }
-      destruct s.
-      all: unfold Format.split.
-      { apply H. }
-      desf. }
-    generalize dependent H.
-    generalize (Format.split "\n" s).
-    ins.
-    destruct l; auto.
-    simpls.
-    lia. }
-  assert (forall a, In a (map line (Format.split "\n" s)) -> format_correct a).
-  { ins.
-    generalize dependent H0.
-    clear.
-    generalize (Format.split "\n" s).
-    ins.
-    induction l; simpls.
+  ins. unfold of_string.
+  assert (length (map line (Format.split "\n" s)) > 0) as NN.
+  { rewrite length_map. apply format_split_length_non_zero. }
+  remember (Format.split "\n" s) as ss eqn:HH. clear HH.
+
+  assert (forall a (IN : In a (map line ss)), format_correct a) as AA.
+  { clear NN.
+    ins. induction ss; simpls.
     desf.
-    { clear.
-      unfold format_correct.
-      unfold format_correct1.
-      unfold format_correct2.
-      unfold format_correct3.
-      unfold line.
-      repeat split; auto. }
-    apply IHl; auto. }
-  generalize dependent H.
-  generalize dependent H0.
-  generalize (map line (Format.split "\n" s)).
+    { repeat autounfold with unfoldCorrectDb in *.
+      unfold line. splits; auto. }
+    apply IHss; auto. }
+
+  generalize dependent NN.
+  generalize dependent AA.
+  generalize (map line ss).
   ins.
   destruct l; simpls.
   assert (format_correct (add_above empty t)).
-  { apply H0.
+  { eapply AA.
     unfold add_above.
     simpls.
-    auto. }
+    eauto. }
   generalize dependent t.
-  clear H.
-  induction l; simpls.
-  ins.
-  assert (add_above (add_above empty t) a = add_above empty (add_above t a)); simpls.
-  rewrite H.
+  clear NN.
+  induction l; ins.
+  assert (add_above (add_above empty t) a = add_above empty (add_above t a)) as BB by simpls.
+  rewrite BB.
   apply IHl.
   { ins.
     desf.
     { apply above_format; auto. }
-    apply H0; auto. }
+    apply AA; auto. }
   unfold add_above at 1.
   simpls.
   apply above_format; auto.
 Qed.
 
-Lemma indent_format a n
-      (H1: format_correct a) : format_correct (indent' n a).
-Proof.
-  unfold format_correct in *.
-  unfold format_correct1 in *.
-  unfold format_correct2 in *.
-  unfold format_correct3 in *.
-  desf.
-  split.
-  { red.
-    ins.
-    unfold indent' in *.
-    desf; ins.
-    all: lia. }
-  split.
-  { red.
-    unfold indent' in *.
-    desf. }
-  red.
-  ins.
-  unfold indent' in *.
-  desf; ins.
-  lia.
-Qed.
+Ltac line_indent_solver :=
+  match goal with
+  | |- (_ = ?X) =>
+    destruct X eqn:E1;
+      [apply leb_complete in E1; apply Nat.leb_le; unfold indent'; desf; ins; lia|];
+      apply leb_iff_conv; apply leb_iff_conv in E1; unfold indent';
+        desf; ins; lia
+  end.
 
 Lemma middle_line_indent sh a b:
   (middle_width (indent' sh a) <=? middle_width (indent' sh b)) =
   (middle_width a <=? middle_width b).
-Proof.
-  destruct ((middle_width a <=? middle_width b)) eqn:E1.
-  { apply leb_complete in E1.
-    apply Nat.leb_le.
-    unfold indent'.
-    desf; ins.
-    lia. }
-  apply leb_iff_conv.
-  apply leb_iff_conv in E1.
-  unfold indent'.
-  desf; ins.
-  lia.
-Qed.
+Proof. line_indent_solver. Qed.
 
 Lemma first_line_indent sh a b:
   (first_line_width (indent' sh a) <=? first_line_width (indent' sh b)) =
   (first_line_width a <=? first_line_width b).
-Proof.
-  destruct ((first_line_width a <=? first_line_width b)) eqn:E1.
-  { apply leb_complete in E1.
-    apply Nat.leb_le.
-    unfold indent'.
-    desf; ins.
-    lia. }
-  apply leb_iff_conv.
-  apply leb_iff_conv in E1.
-  unfold indent'.
-  desf; ins.
-  lia.
-Qed.
+Proof. line_indent_solver. Qed.
 
 Lemma last_line_indent sh a b:
   (last_line_width (indent' sh a) <=? last_line_width (indent' sh b)) =
   (last_line_width a <=? last_line_width b).
-Proof.
-  destruct ((last_line_width a <=? last_line_width b)) eqn:E1.
-  { apply leb_complete in E1.
-    apply Nat.leb_le.
-    unfold indent'.
-    desf; ins.
-    lia. }
-  apply leb_iff_conv.
-  apply leb_iff_conv in E1.
-  unfold indent'.
-  desf; ins.
-  lia.
-Qed.
+Proof. line_indent_solver. Qed.
 
 Lemma indent'_comp_helper sh a b :
   less_components a b = less_components (indent' sh a) (indent' sh b).
 Proof.
-  assert (forall c, height c = height (indent' sh c)).
+  assert (forall c, height c = height (indent' sh c)) as HH.
   { ins.
     unfold indent'.
     desf. }
@@ -370,43 +287,28 @@ Proof.
   rewrite first_line_indent.
   rewrite last_line_indent.
   rewrite middle_line_indent.
-  repeat rewrite <- H.
+  repeat rewrite <- HH.
   auto.
 Qed.  
 
 Lemma indent_width b sh a w
-      (F1: format_correct a)
-      (F2: format_correct b)
-      (H1: is_less_than a b = true)
-      (H2: total_width (indent' sh b) <= w) : total_width (indent' sh a) <= w.
+      (F1 : format_correct a)
+      (F2 : format_correct b)
+      (LT : is_less_than a b = true)
+      (TW : total_width (indent' sh b) <= w) :
+  total_width (indent' sh a) <= w.
 Proof.
-  assert (height a > 0 /\ height b > 0).
+  assert (height a > 0 /\ height b > 0) as [HA HB].
   { split.
     { apply F1. }
     apply F2. }
-  desf.
-  unfold is_less_than in H1.
-  rewrite (indent'_comp_helper sh) in H1. 
-  desf.
-  all: try lia.
-  { unfold less_components in H1.
-    andb_split.
-    apply leb_complete in H1.
-    apply leb_complete in H3.
-    apply leb_complete in H4.
-    apply leb_complete in H5.
-    unfold total_width in *.
-    desf; ins.
-    lia. }
-  unfold less_components in H1.
-  andb_split.
-  apply leb_complete in H1.
-  apply leb_complete in H3.
-  apply leb_complete in H4.
-  apply leb_complete in H5.
-  unfold total_width in *.
-  desf; ins.
-  lia.
+  unfold is_less_than in LT.
+  rewrite (indent'_comp_helper sh) in LT. 
+  desf; zauto.
+  all: unfold less_components in LT.
+  all: andb_split; leb_simpl.
+  all: unfold total_width in *.
+  all: desf; ins; lia.
 Qed.  
     
 Lemma indent_width' b sh a w
@@ -514,31 +416,31 @@ Proof.
   rewrite L.
   rewrite first_line_indent.
   rewrite last_line_indent.
-  rewrite L.
-  reflexivity.
+  rewrite L; auto.
 Qed.
 
 Lemma above_correct : fun_correct add_above.
 Proof.
   unfold fun_correct.
-  split.
-  { unfold save_correct.
-    ins.
-    desf.
-    apply above_format; auto. }
-  split.
-  { unfold save_width.
-    ins.
-    unfold format_correct in H.
-    unfold format_correct1 in H.
-    unfold format_correct2 in H.
-    unfold format_correct3 in H.
-    desf.
-    split.
-    all: unfold add_above in H1.
+  splits; red; ins.
+  { apply above_format; auto. }
+  { repeat autounfold with unfoldCorrectDb in *.
+    desf. split.
+    all: unfold add_above in *.
     all: unfold total_width in *.
-    all: desf; ins.
-    all: try lia. }
+    all: desf; ins; zauto.
+    all: repeat match goal with
+    | H: Init.Nat.max ?X ?Y <= ?Z |- _ => apply Nat.max_lub_iff in H; desf
+    end.
+    all: repeat (apply Max.max_lub; auto).
+    all: repeat match goal with
+                | H : (1 = 2 -> _) |- _ => clear H
+                | H : 1 > 0 |- _ => clear H
+                | H : (1 = 1 -> ?X) |- _ => specialize (H eq_refl); desf
+                end.
+    all: lia. }
+  (* TODO: continue from here. *)
+
   unfold save_less.
   ins.
   desf.
