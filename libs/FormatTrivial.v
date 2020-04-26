@@ -1,5 +1,5 @@
-Require Import format.
-Require Import doc.
+Require Import Format.
+Require Import Doc.
 
 Open Scope list_scope.
 Require Import ZArith Int.
@@ -9,16 +9,15 @@ Require Import String.
 Definition cross_general (width: nat) (op: t -> t -> t) (fl1: list t) (fl2: list t) :=
   List.filter 
     (fun f => total_width f <=? width)
-    (List.concat (map (fun f => map (op f) fl2) fl1)).
+    (List.concat (map (fun b => map (fun a => op a b) fl1) fl2)).
 
 Definition blank_line := (line "")::nil.
 
-(* Shift each block to 'shift' positions right *)
-Definition indentDoc (shift: nat) (fs: list t) :=
-  map (indent' shift) fs.
-
 (* Construct document from 'string' using 'above' rule *)
 Definition constructDoc (s: string) := (of_string s)::nil.
+
+Definition indentDoc (width: nat) (shift: nat) (fs: list t) :=
+  cross_general width (fun _ b => indent' shift b) (empty::nil) fs.
 
 (* Use 'beside' rule for 2 documents. New document ~ n x m *)
 Definition besideDoc (width: nat) (fs1: list t) (fs2: list t) := 
@@ -36,12 +35,12 @@ Definition fillDoc (width: nat) (fs1: list t) (fs2: list t) (shift: nat) :=
 Definition choiceDoc (fs1: list t) (fs2: list t) := 
     fs1 ++ fs2.
 
-Fixpoint EvaluatorTrival (width: nat) (doc: Doc): list t:=
+Fixpoint evaluatorTrivial (width: nat) (doc: Doc): list t:=
   match doc with
   | Text s     => constructDoc s
-  | Indent n d => indentDoc n (EvaluatorTrival width d)
-  | Beside a b => besideDoc width (EvaluatorTrival width a) (EvaluatorTrival width b)
-  | Above a b  => aboveDoc width (EvaluatorTrival width a) (EvaluatorTrival width b)
-  | Choice a b => choiceDoc (EvaluatorTrival width a) (EvaluatorTrival width b)
-  | Fill a b n => fillDoc width (EvaluatorTrival width a) (EvaluatorTrival width b) n
+  | Indent n d => indentDoc width n (evaluatorTrivial width d)
+  | Beside a b => besideDoc width (evaluatorTrivial width a) (evaluatorTrivial width b)
+  | Above a b  => aboveDoc width (evaluatorTrivial width a) (evaluatorTrivial width b)
+  | Choice a b => choiceDoc (evaluatorTrivial width a) (evaluatorTrivial width b)
+  | Fill a b n => fillDoc width (evaluatorTrivial width a) (evaluatorTrivial width b) n
   end.
