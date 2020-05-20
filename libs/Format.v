@@ -30,6 +30,8 @@ Definition line (nt:string): t :=
   let length := String.length nt in
     T 1 length length length (fun s t => append nt t).
 
+Definition newline := String (Ascii.ascii_of_N 10) EmptyString.
+
 Fixpoint sp n :=
     match n with
     | O    => EmptyString
@@ -59,7 +61,7 @@ Definition add_above (G:t) (G':t): t:=
          G.(first_line_width)
          middle_with_new
          G'.(last_line_width)
-         (fun s t => G.(to_text) s (append "\n" (append (sp s) (G'.(to_text) s t))))
+         (fun s t => G.(to_text) s (append newline (append (sp s) (G'.(to_text) s t))))
   end.
 
 Definition add_beside (G:t) (G':t):t :=
@@ -153,7 +155,7 @@ Definition split regexp :=
             match index 0 regexp s with
             | Some n => 
                substring 0 n s::
-                sp_helper (n + 1) s'
+                sp_helper (n - 1 + String.length regexp) s'
             | None   => s::nil
             end
          | _ => sp_helper (pos - 1) s'
@@ -162,7 +164,7 @@ Definition split regexp :=
   in sp_helper 0.
 
 Definition of_string s :=
-  let lines := split "\n" s in
+  let lines := split newline s in
   let lineFormats := map line lines in 
   fold_left add_above lineFormats empty.
 
