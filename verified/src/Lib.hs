@@ -2,35 +2,40 @@ module Lib
     ( pretty
     ) where
 
+import qualified Prelude
+
 import FormatPareto
 import BaseFun
 import Format
-import Data.Type.Natural
 
-get_min_height :: [T0] -> Nat -> (Option Nat) -> Option Nat
+get_min_height :: (([]) T0) -> Prelude.Int -> (Prelude.Maybe Prelude.Int) ->
+                  Prelude.Maybe Prelude.Int
 get_min_height lst w res =
   case lst of {
-   [] -> res;
-   hd:tl ->
-    case leb (total_width hd) w of {
-     True ->
+   ([]) -> res;
+   (:) hd tl ->
+    case (Prelude.<=) (total_width hd) w of {
+     Prelude.True ->
       case res of {
-       Some n -> get_min_height tl w (Some (min n (height hd)));
-       None -> get_min_height tl w (Some (height hd))};
-     False -> get_min_height tl w res}}
+       Prelude.Just n ->
+        get_min_height tl w (Prelude.Just (Prelude.min n (height hd)));
+       Prelude.Nothing -> get_min_height tl w (Prelude.Just (height hd))};
+     Prelude.False -> get_min_height tl w res}}
 
-pick_best_list :: [T0] -> Nat -> [T0]
+pick_best_list :: (([]) T0) -> Prelude.Int -> ([]) T0
 pick_best_list lst w =
   case lst of {
-   [] -> [];
-   _:_ ->
-    case get_min_height lst w None of {
-     Some n ->
-      filter (\f -> andb (leb (total_width f) w) (eqb (height f) n)) lst;
-     None -> []}}
+   ([]) -> ([]);
+   (:) _ _ ->
+    case get_min_height lst w Prelude.Nothing of {
+     Prelude.Just n ->
+      filter (\f ->
+        (Prelude.&&) ((Prelude.<=) (total_width f) w)
+          ((Prelude.==) (height f) n)) lst;
+     Prelude.Nothing -> ([])}}
 
-pretty :: [T0] -> Nat -> IO ()
-pretty d w = putStrLn (foldr (\f m ->
-    ((to_text f 0 "") ++ "----------------\n" ++ m))
+pretty :: [T0] -> Prelude.Int -> Prelude.IO ()
+pretty d w = Prelude.putStrLn (Prelude.foldr (\f m ->
+    ((to_text f 0 "") Prelude.++ "\n----------------\n" Prelude.++ m))
     ""
     (pick_best_list d w))
