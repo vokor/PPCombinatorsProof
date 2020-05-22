@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: da629684d0010992a7af906487f6481fa42378f5b1769c7207723577deac9390
+-- hash: 385651870e9958208142787b51c3d7923d66f5892ade6c35c861f0572149ecf7
 
 name:           verified
 version:        0.1.0.0
@@ -14,6 +14,7 @@ bug-reports:    https://github.com/githubuser/verified/issues
 author:         Author name here
 maintainer:     example@example.com
 copyright:      2020 Author name here
+license:        BSD3
 build-type:     Simple
 extra-source-files:
     README.md
@@ -52,6 +53,7 @@ test-suite verified-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      While
       Paths_verified
   hs-source-dirs:
       test

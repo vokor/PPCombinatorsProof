@@ -1,2 +1,5 @@
+import While
+import Lib
+
 main :: IO ()
-main = putStrLn "Test suite not yet implemented"
+main = pretty testData w

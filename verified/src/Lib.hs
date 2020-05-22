@@ -35,7 +35,7 @@ pick_best_list lst w =
      Prelude.Nothing -> ([])}}
 
 pretty :: [T0] -> Prelude.Int -> Prelude.IO ()
-pretty d w = Prelude.putStrLn (Prelude.foldr (\f m ->
+pretty d w = Prelude.putStrLn ("\n" Prelude.++ (Prelude.foldr (\f m ->
     ((to_text f 0 "") Prelude.++ "\n----------------\n" Prelude.++ m))
     ""
-    (pick_best_list d w))
+    (pick_best_list d w)))

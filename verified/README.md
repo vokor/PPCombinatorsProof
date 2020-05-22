@@ -20,3 +20,7 @@ cd verified
 stack setup
 stack build
 ```
+To test the project you need:
+```
+stack test
+```
