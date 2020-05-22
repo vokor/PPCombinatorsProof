@@ -184,7 +184,7 @@ Ltac add_solver :=
 Lemma beside_format a b
       (FCA : format_correct a)
       (FCB : format_correct b) :
-  format_correct (add_beside a b).
+  format_correct (add_beside a b). 
 Proof. add_solver. Qed.
 
 Lemma fill_format a b n
@@ -215,9 +215,9 @@ Qed.
 Lemma of_string_correct s : format_correct (of_string s).
 Proof.
   ins. unfold of_string.
-  assert (length (map line (Format.split "\n" s)) > 0) as NN.
+  assert (length (map line (Format.split newline s)) > 0) as NN.
   { rewrite length_map. apply format_split_length_non_zero. }
-  remember (Format.split "\n" s) as ss eqn:HH. clear HH.
+  remember (Format.split newline s) as ss eqn:HH. clear HH.
 
   assert (forall a (IN : In a (map line ss)), format_correct a) as AA.
   { clear NN.
@@ -419,186 +419,33 @@ Proof.
   rewrite L; auto.
 Qed.
 
-Lemma above_correct : fun_correct add_above.
-Proof.
-  unfold fun_correct.
-  splits; red; ins.
-  { apply above_format; auto. }
-  { repeat autounfold with unfoldCorrectDb in *.
-    desf. split.
-    all: unfold add_above in *.
-    all: unfold total_width in *.
-    all: desf; ins; zauto.
-    all: repeat match goal with
-    | H: Init.Nat.max ?X ?Y <= ?Z |- _ => apply Nat.max_lub_iff in H; desf
-    end.
-    all: repeat (apply Max.max_lub; auto).
-    all: repeat match goal with
-                | H : (1 = 2 -> _) |- _ => clear H
-                | H : 1 > 0 |- _ => clear H
-                | H : (1 = 1 -> ?X) |- _ => specialize (H eq_refl); desf
-                end.
-    all: lia. }
-  (* TODO: continue from here. *)
-
-  unfold save_less.
-  ins.
-  desf.
-  unfold quad_correct in H.
-  desf.
-  assert (triple_correct (add_above a c) (add_above b c) (add_above b d)).
-  { unfold triple_correct.
-    split.
-    { red.
-      apply above_format; auto. }
-    split.
-    { red.
-      apply above_format; auto. }
-    red.
-    apply above_format; auto. }
-  unfold format_correct in *.
-  unfold format_correct1 in *.
-  unfold format_correct2 in *.
-  unfold format_correct3 in *.
-  desf.
-  apply (is_less_than'_trans _ (add_above b c)); auto.
-  { clear H1. clear H.
-    unfold is_less_than' in *.
-    unfold is_less_than in *.
-    unfold less_components in *.
-    unfold add_above in *.
-    desf; ins. 
-    all: desf.
-    all: try andb_split.   
-    all: try apply leb_complete in H.
-    all: try apply leb_complete in H1.
-    all: try apply leb_complete in H2.
-    all: try apply leb_complete in H3.
-    all: try apply leb_complete in H0.
-    all: try lia.
-    all: repeat (apply andb_true_iff; split).
-    all: try apply Nat.leb_le.
-    all: lia. }
-  clear H0. clear H.
-  unfold is_less_than' in *.
-  unfold is_less_than in *.
-  unfold less_components in *.
-  unfold add_above in *.
-  desf; ins.
-  all: desf.
-  all: try andb_split.
-  all: try apply leb_complete in H.
-  all: try apply leb_complete in H1.
-  all: try apply leb_complete in H2.
-  all: try apply leb_complete in H0.
-  all: try apply leb_complete in H3.
-  all: repeat (apply andb_true_iff; split).
-  all: try apply Nat.leb_le.
-  all: lia.
-Qed.
-
-Lemma fill_correct n: fun_correct (fun fs f : t => add_fill fs f n).
-Proof.
-  unfold fun_correct.
-  split.
-  { unfold save_correct.
-    ins.
-    desf.
-    apply fill_format; auto. }
-  split.
-  { unfold save_width.
-    ins.
-    unfold format_correct in H.
-    unfold format_correct1 in H.
-    unfold format_correct2 in H.
-    unfold format_correct3 in H.
-    desf.
-    split.
-    all: unfold add_fill in H1.
-    all: unfold total_width in *.
-    all: desf; ins.
-    all: try lia. }
-  unfold save_less.
-  ins.
-  desf.
-  unfold quad_correct in H.
-  desf.
-  assert (triple_correct (add_fill a c n) (add_fill b c n) (add_fill b d n)).
-  { unfold triple_correct.
-    split.
-    { red.
-      apply fill_format; auto. }
-    split.
-    { red.
-      apply fill_format; auto. }
-    red.
-    apply fill_format; auto. }
-  unfold format_correct in *.
-  unfold format_correct1 in *.
-  unfold format_correct2 in *.
-  unfold format_correct3 in *.
-  desf.
-  apply (is_less_than'_trans _ (add_fill b c n)); auto.
-  { clear H1. clear H.
-    unfold is_less_than' in *.
-    unfold is_less_than in *.
-    unfold less_components in *.
-    unfold add_fill in *.
-    desf; ins.
-    all: desf.
-    all: try andb_split.   
-    all: try apply leb_complete in H.
-    all: try apply leb_complete in H1.
-    all: try apply leb_complete in H2.
-    all: try apply leb_complete in H3.
-    all: try apply leb_complete in H0.
-    all: try lia.
-    all: repeat (apply andb_true_iff; split).
-    all: try apply Nat.leb_le.
-    all: lia. }
-  clear H0. clear H.
-  unfold is_less_than' in *.
-  unfold is_less_than in *.
-  unfold less_components in *.
-  unfold add_fill in *.
-  desf; ins.
-  all: desf.
-  all: try andb_split.
-  all: try apply leb_complete in H.
-  all: try apply leb_complete in H1.
-  all: try apply leb_complete in H2.
-  all: try apply leb_complete in H0.
-  all: try apply leb_complete in H3.
-  all: repeat (apply andb_true_iff; split).
-  all: try apply Nat.leb_le.
-  all: lia.                        
-Qed.
-
 Lemma beside_correct : fun_correct add_beside.
 Proof.
   unfold fun_correct.
   split.
   { unfold save_correct.
+    red.
     ins.
-    desf.
     apply beside_format; auto. }
   split.
+  red.
   { unfold save_width.
     ins.
-    unfold format_correct in H.
-    unfold format_correct1 in H.
-    unfold format_correct2 in H.
-    unfold format_correct3 in H.
+    unfold format_correct in *.
+    unfold format_correct1 in *.
+    unfold format_correct2 in *.
+    unfold format_correct3 in *.
     desf.
     split.
-    all: unfold add_beside in H1.
+    all: unfold add_beside in *.
     all: unfold total_width in *.
     all: desf; ins.
     all: try lia. }
   unfold save_less.
+  red.
   ins.
   desf.
-  unfold quad_correct in H.
+  unfold quad_correct in *.
   desf.
   assert (triple_correct (add_beside a c) (add_beside b c) (add_beside b d)).
   { unfold triple_correct.
@@ -616,24 +463,26 @@ Proof.
   unfold format_correct3 in *.
   desf.
   apply (is_less_than'_trans _ (add_beside b c)); auto.
-  { clear H1. clear H.
-    unfold is_less_than' in *.
+  { unfold is_less_than' in *.
     unfold is_less_than in *.
     unfold less_components in *.
     unfold add_beside in *.
     desf; ins.
     all: desf.
     all: try andb_split.   
-    all: try apply leb_complete in H.
-    all: try apply leb_complete in H1.
-    all: try apply leb_complete in H2.
-    all: try apply leb_complete in H3.
-    all: try apply leb_complete in H0.
+    all: try apply leb_complete in LTAB.
+    all: try apply leb_complete in LTAB0.
+    all: try apply leb_complete in LTAB1.
+    all: try apply leb_complete in LTCD.
+    all: try apply leb_complete in LTCD0.
+    all: try apply leb_complete in LTCD1.
     all: try lia.
     all: repeat (apply andb_true_iff; split).
     all: try apply Nat.leb_le.
+    all: try lia.
+    all: try auto.
+    all: apply leb_complete in LTAB2.
     all: lia. }
-  clear H0. clear H.
   unfold is_less_than' in *.
   unfold is_less_than in *.
   unfold less_components in *.
@@ -641,12 +490,186 @@ Proof.
   desf; ins.
   all: desf.
   all: try andb_split.
-  all: try apply leb_complete in H.
-  all: try apply leb_complete in H1.
-  all: try apply leb_complete in H2.
-  all: try apply leb_complete in H0.
-  all: try apply leb_complete in H3.
+  all: try apply leb_complete in LTAB.
+  all: try apply leb_complete in LTAB0.
+  all: try apply leb_complete in LTAB1.
+  all: try apply leb_complete in LTCD.
+  all: try apply leb_complete in LTCD0.
+  all: try apply leb_complete in LTCD1.
   all: repeat (apply andb_true_iff; split).
   all: try apply Nat.leb_le.
-  all: lia.                         
+  all: try lia.
+  all: try auto.                          
+  all: try apply leb_complete in LTCD2.
+  all: try lia.                      
+Qed.
+
+Lemma above_correct : fun_correct add_above.
+Proof.
+  unfold fun_correct.
+  split.
+  { red.
+    unfold save_correct.
+    ins.
+    desf.
+    apply above_format; auto. }
+  split.
+  { red.
+    unfold save_width.
+    ins.
+    unfold format_correct in *.
+    unfold format_correct1 in *.
+    unfold format_correct2 in *.
+    unfold format_correct3 in *.
+    desf.
+    split.
+    all: unfold add_above in *.
+    all: unfold total_width in *.
+    all: desf; ins.
+    all: lia. }
+  red.
+  unfold save_less.
+  ins.
+  desf.
+  unfold quad_correct in QC.
+  desf.
+  assert (triple_correct (add_above a c) (add_above b c) (add_above b d)).
+  { unfold triple_correct.
+    split.
+    { red.
+      apply above_format; auto. }
+    split.
+    { red.
+      apply above_format; auto. }
+    red.
+    apply above_format; auto. }
+  unfold format_correct in *.
+  unfold format_correct1 in *.
+  unfold format_correct2 in *.
+  unfold format_correct3 in *.
+  desf.
+  apply (is_less_than'_trans _ (add_above b c)); auto.
+  { unfold is_less_than' in *.
+    unfold is_less_than in *.
+    unfold less_components in *.
+    unfold add_above in *.
+    desf; ins. 
+    all: desf.
+    all: try andb_split.   
+    all: try apply leb_complete in LTAB.
+    all: try apply leb_complete in LTAB0.
+    all: try apply leb_complete in LTAB1.
+    all: try apply leb_complete in LTCD.
+    all: try apply leb_complete in LTCD0.
+    all: try apply leb_complete in LTCD1.
+    all: try lia.
+    all: repeat (apply andb_true_iff; split).
+    all: try apply Nat.leb_le.
+    all: try lia.
+    all: try auto.
+    all: try apply leb_complete in LTAB2.
+    all: lia. }
+  unfold is_less_than' in *.
+  unfold is_less_than in *.
+  unfold less_components in *.
+  unfold add_above in *.
+  desf; ins.
+  all: desf.
+  all: try andb_split.
+  all: try apply leb_complete in LTAB.
+  all: try apply leb_complete in LTAB0.
+  all: try apply leb_complete in LTAB1.
+  all: try apply leb_complete in LTCD.
+  all: try apply leb_complete in LTCD0.
+  all: try apply leb_complete in LTCD1.
+  all: repeat (apply andb_true_iff; split).
+  all: try apply Nat.leb_le.
+  all: try lia.
+  all: try auto.
+  all: apply leb_complete in LTCD2.
+  all: lia.
+Qed.
+
+Lemma fill_correct n: fun_correct (fun fs f : t => add_fill fs f n).
+Proof.
+  unfold fun_correct.
+  split.
+  { red.
+    unfold save_correct.
+    ins.
+    apply fill_format; auto. }
+  split.
+  { red.
+    unfold save_width.
+    ins.
+    unfold format_correct in *.
+    unfold format_correct1 in *.
+    unfold format_correct2 in *.
+    unfold format_correct3 in *.
+    desf.
+    split.
+    all: unfold add_fill in *.
+    all: unfold total_width in *.
+    all: desf; ins.
+    all: try lia. }
+  unfold save_less.
+  red.
+  ins.
+  unfold quad_correct in *.
+  desf.
+  assert (triple_correct (add_fill a c n) (add_fill b c n) (add_fill b d n)).
+  { unfold triple_correct.
+    split.
+    { red.
+      apply fill_format; auto. }
+    split.
+    { red.
+      apply fill_format; auto. }
+    red.
+    apply fill_format; auto. }
+  unfold format_correct in *.
+  unfold format_correct1 in *.
+  unfold format_correct2 in *.
+  unfold format_correct3 in *.
+  desf.
+  apply (is_less_than'_trans _ (add_fill b c n)); auto.
+  { unfold is_less_than' in *.
+    unfold is_less_than in *.
+    unfold less_components in *.
+    unfold add_fill in *.
+    desf; ins.
+    all: desf.
+    all: try andb_split.   
+    all: try apply leb_complete in LTAB.
+    all: try apply leb_complete in LTAB0.
+    all: try apply leb_complete in LTAB1.
+    all: try apply leb_complete in LTCD.
+    all: try apply leb_complete in LTCD0.
+    all: try apply leb_complete in LTCD1.
+    all: try lia.
+    all: repeat (apply andb_true_iff; split).
+    all: try apply Nat.leb_le.
+    all: try lia.
+    all: try auto.
+    all: apply leb_complete in LTAB2.
+    all: lia. }
+  unfold is_less_than' in *.
+  unfold is_less_than in *.
+  unfold less_components in *.
+  unfold add_fill in *.
+  desf; ins.
+  all: desf.
+  all: try andb_split.
+  all: try apply leb_complete in LTAB.
+  all: try apply leb_complete in LTAB0.
+  all: try apply leb_complete in LTAB1.
+  all: try apply leb_complete in LTCD.
+  all: try apply leb_complete in LTCD0.
+  all: try apply leb_complete in LTCD1.
+  all: repeat (apply andb_true_iff; split).
+  all: try apply Nat.leb_le.
+  all: try lia.
+  all: try auto.                          
+  all: try apply leb_complete in LTCD2.
+  all: try lia.
 Qed.
