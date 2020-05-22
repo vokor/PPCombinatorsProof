@@ -5,6 +5,8 @@
 <br />
 Jean-Philippe Bernardy
 
+The ``` extraction.v ``` file contains the code for obtaining this library.
+
 ## Building the Project
 
 ### Requirements
